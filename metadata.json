@@ -1,0 +1,5 @@
+{
+  "name": "Diplomatic Express Delivery",
+  "description": "Premium Global Logistics & Secure Shipping Management System. Track your diplomatic and commercial shipments with real-time updates and secure proof of delivery.",
+  "requestFramePermissions": ["camera"]
+}

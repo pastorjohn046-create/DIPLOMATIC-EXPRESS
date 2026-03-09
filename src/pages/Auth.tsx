@@ -1,0 +1,137 @@
+import React, { useState } from "react";
+import { motion } from "motion/react";
+import { Lock, User as UserIcon, ArrowRight, Truck } from "lucide-react";
+import { User } from "../types";
+
+interface AuthProps {
+  onLogin: (user: User) => void;
+}
+
+export const Auth = ({ onLogin }: AuthProps) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, role: 'user' }),
+      });
+      
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (res.ok) {
+          if (isLogin) {
+            onLogin(data);
+          } else {
+            setIsLogin(true);
+            setError("Account created! Please login.");
+          }
+        } else {
+          setError(data.error || "An error occurred");
+        }
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        setError(`Server error: Received unexpected response format. Status: ${res.status}`);
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+      setError(`Connection error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-80px)] pt-32 pb-20 md:py-48 flex items-start md:items-center justify-center px-4 md:px-6 bg-slate-50/50">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card w-full max-w-md space-y-8 p-8 md:p-10 shadow-2xl shadow-brand-primary/5 border-slate-100"
+      >
+        <div className="text-center space-y-4">
+          <div className="bg-brand-secondary p-5 rounded-2xl inline-block mb-4 shadow-xl shadow-brand-secondary/20">
+            <Truck className="text-white" size={36} />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black text-brand-primary tracking-tight">
+              {isLogin ? "Welcome Back" : "Create Account"}
+            </h2>
+            <p className="text-sm text-slate-500 font-medium">
+              {isLogin ? "Access your Diplomatic Express account" : "Join our global logistics network"}
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {!isLogin && (
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-widest text-slate-400">Email Address</label>
+              <input
+                required
+                type="email"
+                className="input"
+                placeholder="john@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Username</label>
+            <div className="relative">
+              <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                required
+                className="input pl-14"
+                placeholder="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                required
+                type="password"
+                className="input pl-14"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <button type="submit" className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
+            {isLogin ? "Login" : "Sign Up"}
+            <ArrowRight size={20} />
+          </button>
+        </form>
+
+        <div className="text-center">
+          <button
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm font-bold text-brand-secondary hover:underline"
+          >
+            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};

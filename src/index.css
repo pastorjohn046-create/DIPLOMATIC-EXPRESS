@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #1e1b4b; /* Indigo 950 */
+  --color-brand-secondary: #4f46e5; /* Indigo 600 */
+  --color-brand-accent: #10b981; /* Emerald 500 */
+  --color-brand-bg: #f8fafc; /* Slate 50 */
+}
+
+body {
+  @apply bg-brand-bg text-brand-primary font-sans antialiased;
+}
+
+.btn-primary {
+  @apply bg-brand-secondary text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-secondary/90 transition-all shadow-lg shadow-brand-secondary/20 active:scale-95;
+}
+
+.btn-outline {
+  @apply border-2 border-brand-secondary text-brand-secondary px-8 py-3 rounded-xl font-bold hover:bg-brand-secondary hover:text-white transition-all active:scale-95;
+}
+
+.card {
+  @apply bg-white p-8 rounded-2xl shadow-xl shadow-black/5 border border-black/5;
+}
+
+.input {
+  @apply w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-brand-secondary/10 focus:border-brand-secondary transition-all bg-white;
+}
+
+.nav-link {
+  @apply text-slate-600 hover:text-brand-secondary font-medium transition-colors relative py-2;
+}
+
+.nav-link-active {
+  @apply text-brand-secondary;
+}
+
+.nav-link-active::after {
+  content: '';
+  @apply absolute bottom-0 left-0 w-full h-0.5 bg-brand-secondary rounded-full;
+}
