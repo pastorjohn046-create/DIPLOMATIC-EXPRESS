@@ -324,13 +324,25 @@ app.post("/api/tickets/:id/replies", (req, res) => {
   const { sender_username, message } = req.body;
   db.prepare("INSERT INTO ticket_replies (ticket_id, sender_username, message) VALUES (?, ?, ?)")
     .run(req.params.id, sender_username, message);
+  
+  broadcastUpdate({ 
+    type: "TICKET_REPLY", 
+    data: { ticket_id: req.params.id, sender_username, message, timestamp: new Date() } 
+  });
+  
   res.status(201).json({ success: true });
 });
 
 app.post("/api/tickets", (req, res) => {
   const { customer_email, subject, message } = req.body;
-  db.prepare("INSERT INTO tickets (customer_email, subject, message) VALUES (?, ?, ?)")
+  const result = db.prepare("INSERT INTO tickets (customer_email, subject, message) VALUES (?, ?, ?)")
     .run(customer_email, subject, message);
+  
+  broadcastUpdate({ 
+    type: "NEW_TICKET", 
+    data: { id: result.lastInsertRowid, customer_email, subject, message, status: 'Open', created_at: new Date() } 
+  });
+  
   res.status(201).json({ success: true });
 });
 

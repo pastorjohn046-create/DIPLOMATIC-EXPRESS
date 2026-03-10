@@ -7,8 +7,8 @@ interface LogoProps {
 }
 
 export const Logo = ({ className = "", size = 40, light = false }: LogoProps) => {
-  const primaryColor = light ? "#FFFFFF" : "#002D5B";
-  const secondaryColor = "#E11D48";
+  const primaryColor = light ? "#FFFFFF" : "#1e3a8a";
+  const secondaryColor = "#3b82f6";
 
   return (
     <div className={`flex items-center gap-2 md:gap-3 ${className}`}>
@@ -17,7 +17,7 @@ export const Logo = ({ className = "", size = 40, light = false }: LogoProps) =>
           <defs>
             <linearGradient id="eagleGradient" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor={primaryColor} />
-              <stop offset="100%" stopColor={light ? "#F1F5F9" : "#0056b3"} />
+              <stop offset="100%" stopColor={light ? "#F1F5F9" : "#3b82f6"} />
             </linearGradient>
           </defs>
           
@@ -46,14 +46,14 @@ export const Logo = ({ className = "", size = 40, light = false }: LogoProps) =>
       
       <div className="flex flex-col justify-center">
         <div className={`flex items-baseline gap-1 leading-none`}>
-          <span className={`text-sm sm:text-base md:text-xl font-black tracking-tighter uppercase ${light ? "text-white" : "text-[#002D5B]"}`}>
+          <span className={`text-sm sm:text-base md:text-xl font-black tracking-tighter uppercase ${light ? "text-white" : "text-[#1e3a8a]"}`}>
             Diplomatic
           </span>
-          <span className={`text-sm sm:text-base md:text-xl font-black tracking-tighter uppercase flex items-baseline ${light ? "text-white" : "text-[#002D5B]"}`}>
-            <span className="text-[#E11D48]">X</span>press
+          <span className={`text-sm sm:text-base md:text-xl font-black tracking-tighter uppercase flex items-baseline ${light ? "text-white" : "text-[#1e3a8a]"}`}>
+            <span className="text-[#3b82f6]">X</span>press
           </span>
         </div>
-        <div className={`text-[8px] md:text-[10px] font-bold tracking-[0.3em] uppercase mt-0.5 leading-none ${light ? "text-white/80" : "text-[#002D5B]/80"}`}>
+        <div className={`text-[8px] md:text-[10px] font-bold tracking-[0.3em] uppercase mt-0.5 leading-none ${light ? "text-white/80" : "text-[#1e3a8a]/80"}`}>
           Logistics
         </div>
       </div>

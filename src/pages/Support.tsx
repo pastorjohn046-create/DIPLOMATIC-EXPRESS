@@ -23,6 +23,26 @@ export const SupportPortal = () => {
     setReplies(data);
   };
 
+  useEffect(() => {
+    if (ticket.customer_email) {
+      fetchTickets(ticket.customer_email);
+    }
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "TICKET_REPLY") {
+        if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
+          setReplies(prev => [...prev, message.data]);
+        }
+      }
+    };
+
+    return () => ws.close();
+  }, [ticket.customer_email, selectedTicket]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch("/api/tickets", {

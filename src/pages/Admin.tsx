@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer } from "lucide-react";
+import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shipment, Ticket, User } from "../types";
 
@@ -13,7 +13,11 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [activeAdminTab, setActiveAdminTab] = useState<"shipments" | "cs">("shipments");
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [replies, setReplies] = useState<any[]>([]);
+  const [newReply, setNewReply] = useState("");
   const [showLogs, setShowLogs] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showReceiptGen, setShowReceiptGen] = useState(false);
@@ -48,7 +52,25 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     fetchTickets();
     fetchLogs();
     fetchUsers();
-  }, []);
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "NEW_TICKET") {
+        setTickets(prev => [message.data, ...prev]);
+      } else if (message.type === "TICKET_REPLY") {
+        if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
+          setReplies(prev => [...prev, message.data]);
+        }
+      } else if (message.type === "SHIPMENT_UPDATE") {
+        fetchShipments();
+      }
+    };
+
+    return () => ws.close();
+  }, [selectedTicket]);
 
   const fetchUsers = async () => {
     try {
@@ -168,10 +190,6 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   };
 
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [replies, setReplies] = useState<any[]>([]);
-  const [newReply, setNewReply] = useState("");
-
   const fetchReplies = async (ticketId: number) => {
     const res = await fetch(`/api/tickets/${ticketId}/replies`);
     const data = await res.json();
@@ -228,101 +246,127 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="card">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Truck size={24} className="text-brand-secondary" />
-                Active Shipments
-              </h3>
-              <span className="text-xs font-bold bg-slate-100 px-3 py-1 rounded-full text-slate-500">{shipments.length} Total</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-widest">
-                    <th className="pb-4 font-bold">ID</th>
-                    <th className="pb-4 font-bold">Customer</th>
-                    <th className="pb-4 font-bold">Destination</th>
-                    <th className="pb-4 font-bold">Status</th>
-                    <th className="pb-4 font-bold text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {shipments.map((s) => (
-                    <tr key={s.id} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="py-5 font-mono font-black text-brand-secondary">{s.id}</td>
-                      <td className="py-5 font-medium">{s.customer_name}</td>
-                      <td className="py-5 text-slate-500">{s.destination}</td>
-                      <td className="py-5">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                          s.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"
-                        }`}>
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="py-5 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button 
-                            onClick={() => {
-                              setSelectedShipment(s);
-                              setEditShipmentData({
-                                customer_name: s.customer_name,
-                                client_phone: s.client_phone || "",
-                                origin: s.origin,
-                                destination: s.destination
-                              });
-                              setIsEditingShipment(true);
-                            }}
-                            className="text-slate-400 font-bold text-sm hover:text-brand-primary"
-                          >
-                            Edit
-                          </button>
-                          <button 
-                            onClick={() => setSelectedShipment(s)}
-                            className="text-brand-secondary font-bold text-sm hover:underline"
-                          >
-                            Update Status
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      <div className="flex border-b border-slate-100 mb-8">
+        <button 
+          onClick={() => setActiveAdminTab("shipments")}
+          className={`px-8 py-4 font-black uppercase tracking-widest text-sm transition-all relative ${activeAdminTab === "shipments" ? "text-brand-secondary" : "text-slate-400 hover:text-brand-primary"}`}
+        >
+          Shipments
+          {activeAdminTab === "shipments" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveAdminTab("cs")}
+          className={`px-8 py-4 font-black uppercase tracking-widest text-sm transition-all relative flex items-center gap-2 ${activeAdminTab === "cs" ? "text-brand-secondary" : "text-slate-400 hover:text-brand-primary"}`}
+        >
+          Customer Service
+          {tickets.some(t => t.status === 'Open') && <span className="w-2 h-2 bg-brand-secondary rounded-full animate-pulse" />}
+          {activeAdminTab === "cs" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
+        </button>
+      </div>
 
-        <div className="space-y-8">
-          <div className="card">
-            <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
-              <MessageSquare size={24} className="text-brand-secondary" />
-              Support Inbox
-            </h3>
-            <div className="space-y-4">
-              {tickets.map((t) => (
-                <div key={t.id} onClick={() => { setSelectedTicket(t); fetchReplies(t.id); }} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-brand-secondary transition-colors cursor-pointer">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-[10px] font-black text-brand-secondary uppercase tracking-widest bg-white px-2 py-1 rounded-md border border-slate-100">{t.status}</span>
-                    <span className="text-[10px] text-slate-400">{new Date(t.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <h4 className="font-bold text-brand-primary mb-1">{t.subject}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.message}</p>
-                </div>
-              ))}
-              {tickets.length === 0 && (
-                <div className="text-center py-10 space-y-2">
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                    <MessageSquare size={20} />
-                  </div>
-                  <p className="text-sm text-slate-400">No active tickets.</p>
-                </div>
-              )}
+      <div className="grid grid-cols-1 gap-10">
+        {activeAdminTab === "shipments" ? (
+          <div className="space-y-8">
+            <div className="card">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Truck size={24} className="text-brand-secondary" />
+                  Active Shipments
+                </h3>
+                <span className="text-xs font-bold bg-slate-100 px-3 py-1 rounded-full text-slate-500">{shipments.length} Total</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-widest">
+                      <th className="pb-4 font-bold">ID</th>
+                      <th className="pb-4 font-bold">Customer</th>
+                      <th className="pb-4 font-bold">Destination</th>
+                      <th className="pb-4 font-bold">Status</th>
+                      <th className="pb-4 font-bold text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {shipments.map((s) => (
+                      <tr key={s.id} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="py-5 font-mono font-black text-brand-secondary">{s.id}</td>
+                        <td className="py-5 font-medium">{s.customer_name}</td>
+                        <td className="py-5 text-slate-500">{s.destination}</td>
+                        <td className="py-5">
+                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                            s.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"
+                          }`}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="py-5 text-right">
+                          <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => {
+                                setSelectedShipment(s);
+                                setEditShipmentData({
+                                  customer_name: s.customer_name,
+                                  client_phone: s.client_phone || "",
+                                  origin: s.origin,
+                                  destination: s.destination
+                                });
+                                setIsEditingShipment(true);
+                              }}
+                              className="text-slate-400 font-bold text-sm hover:text-brand-primary"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => setSelectedShipment(s)}
+                              className="text-brand-secondary font-bold text-sm hover:underline"
+                            >
+                              Update Status
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="card">
+              <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+                <MessageSquare size={24} className="text-brand-secondary" />
+                Customer Service Portal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tickets.map((t) => (
+                  <div key={t.id} onClick={() => { setSelectedTicket(t); fetchReplies(t.id); }} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-brand-secondary transition-all cursor-pointer group hover:shadow-lg hover:shadow-brand-secondary/5">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md border ${
+                        t.status === 'Open' ? 'bg-brand-secondary text-white border-brand-secondary' : 'bg-white text-slate-400 border-slate-100'
+                      }`}>{t.status}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <h4 className="font-bold text-brand-primary mb-2 group-hover:text-brand-secondary transition-colors">{t.subject}</h4>
+                    <p className="text-xs text-slate-500 mb-4 line-clamp-3 leading-relaxed">{t.message}</p>
+                    <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
+                      <span className="text-[10px] font-black text-slate-400 uppercase">{t.customer_email}</span>
+                      <span className="text-xs font-bold text-brand-secondary">View & Reply →</span>
+                    </div>
+                  </div>
+                ))}
+                {tickets.length === 0 && (
+                  <div className="col-span-full text-center py-20 space-y-4">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                      <MessageSquare size={32} />
+                    </div>
+                    <p className="text-slate-400 font-bold">No customer messages yet.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -429,138 +473,133 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               </div>
 
               {/* Receipt Preview (Printable) */}
-              <div id="printable-receipt" className="bg-white p-8 border border-slate-200 rounded-lg shadow-sm font-sans text-slate-800">
+              <div id="printable-receipt" className="bg-white p-12 border border-slate-200 rounded-lg shadow-sm font-sans text-slate-800">
                 <style dangerouslySetInnerHTML={{ __html: `
                   @media print {
                     body * { visibility: hidden; }
                     #printable-receipt, #printable-receipt * { visibility: visible; }
-                    #printable-receipt { position: absolute; left: 0; top: 0; width: 100%; }
+                    #printable-receipt { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
                   }
                 `}} />
                 
-                {/* Header */}
-                <div className="bg-brand-primary text-white p-6 -mx-8 -mt-8 mb-8 flex justify-between items-start">
-                  <div className="space-y-1">
-                    <p className="text-xs opacity-70">Diplomatic Xpress Logistics</p>
-                    <div className="flex gap-8">
-                      <div>
-                        <p className="text-[10px] uppercase font-bold opacity-60">Tracking ID</p>
-                        <p className="text-lg font-black">{receiptData.trackingId || "---"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase font-bold opacity-60">Delivery Date</p>
-                        <p className="text-lg font-black">{receiptData.deliveryDate || "---"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Logo Section */}
-                <div className="flex flex-col items-center mb-10">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-16 h-16 relative flex items-center justify-center">
-                      <svg viewBox="0 0 100 100" className="w-full h-full">
-                        <path d="M20 20 C 40 10, 80 10, 90 50 C 80 90, 40 90, 20 80" fill="none" stroke="#002D5B" strokeWidth="8" strokeLinecap="round" />
-                        <path d="M20 20 L 50 50 L 20 80" fill="none" stroke="#002D5B" strokeWidth="8" strokeLinecap="round" />
-                        <circle cx="50" cy="50" r="10" fill="#E11D48" />
-                      </svg>
-                    </div>
-                    <div className="text-left">
-                      <h1 className="text-2xl font-black text-[#002D5B] leading-none">DIPLOMATIC <span className="text-[#E11D48]">XPRESS</span></h1>
-                      <h2 className="text-xl font-black text-[#002D5B] tracking-[0.2em]">LOGISTICS</h2>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                {/* Header Section */}
+                <div className="flex justify-between items-start mb-12 border-b-4 border-brand-primary pb-8">
                   <div className="space-y-4">
-                    <h3 className="text-sm font-black border-b-2 border-slate-100 pb-2 uppercase tracking-widest">Sender Details:</h3>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-brand-primary rounded-xl flex items-center justify-center">
+                        <Truck className="text-white" size={28} />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-black text-brand-primary leading-tight uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span></h1>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Logistics & Courier</p>
+                      </div>
+                    </div>
                     <div className="space-y-1">
-                      <p className="font-bold text-lg">{receiptData.senderName || "---"}</p>
-                      <p className="text-slate-500 text-sm">{receiptData.senderAddress || "---"}</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Consignment Receipt</p>
+                      <p className="text-sm font-medium text-slate-500 italic">"Global reach, local touch."</p>
+                    </div>
+                  </div>
+                  <div className="text-right space-y-2">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 inline-block">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Tracking Number</p>
+                      <p className="text-xl font-black text-brand-primary font-mono">{receiptData.trackingId || "---"}</p>
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date: {receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                {/* Address Grid */}
+                <div className="grid grid-cols-2 gap-16 mb-12">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <div className="w-2 h-2 rounded-full bg-brand-secondary" />
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Shipper Details</h3>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-lg font-black text-brand-primary">{receiptData.senderName || "---"}</p>
+                      <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.senderAddress || "---"}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h3 className="text-sm font-black border-b-2 border-slate-100 pb-2 uppercase tracking-widest">Receiver Details:</h3>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Consignee Details</h3>
+                    </div>
                     <div className="space-y-1">
-                      <p className="font-bold text-lg">{receiptData.receiverName || "---"}</p>
-                      <p className="text-brand-secondary text-sm font-medium">{receiptData.receiverEmail || "---"}</p>
-                      <p className="text-slate-500 text-sm leading-relaxed">{receiptData.receiverAddress || "---"}</p>
+                      <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
+                      <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
+                      <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Consignment Table */}
-                <div className="border-2 border-red-500 rounded-lg overflow-hidden mb-8">
-                  <div className="bg-slate-50 px-4 py-1 border-b border-red-500">
-                    <p className="text-[10px] font-bold text-red-500 uppercase">Consignment Details</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-y-4 p-6">
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold">Origin</p>
-                      <p className="text-slate-600">{receiptData.origin || "---"}</p>
-                    </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-sm font-bold">Arrived storage facility 🇰🇷</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold">Content</p>
-                      <p className="text-slate-600">{receiptData.content || "---"}</p>
-                    </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-slate-600">Parcel 📦</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold">Weight</p>
-                      <p className="text-slate-600">{receiptData.weight || "---"}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold">Estimated Delivery</p>
-                      <p className="text-slate-600">{receiptData.estDelivery || "---"}</p>
-                    </div>
-                    <div className="pt-4 border-t border-slate-100 col-span-2 flex justify-between items-center">
-                      <p className="text-sm font-bold">Payment Status</p>
-                      <span className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded uppercase">{receiptData.paymentStatus || "NOT AVAILABLE"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Charges Table */}
-                <div className="border-2 border-slate-800 rounded-lg overflow-hidden mb-12">
-                  <table className="w-full text-center">
+                {/* Main Content Table */}
+                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-12">
+                  <table className="w-full">
                     <thead>
-                      <tr className="border-b-2 border-red-500">
-                        <th className="py-3 text-lg font-bold border-r-2 border-slate-800">Quantity</th>
-                        <th className="py-3 text-lg font-bold border-r-2 border-slate-800">Weight</th>
-                        <th className="py-3 text-lg font-bold">action</th>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Description</th>
+                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Origin</th>
+                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weight</th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       <tr>
-                        <td className="py-4 text-lg border-r-2 border-slate-800">{receiptData.quantity || "---"}</td>
-                        <td className="py-4 text-lg border-r-2 border-slate-800">{receiptData.weight || "---"}</td>
-                        <td className="py-4 text-lg font-medium">{receiptData.action || "---"}</td>
+                        <td className="px-6 py-8">
+                          <p className="font-black text-brand-primary mb-1">{receiptData.content || "General Cargo"}</p>
+                          <p className="text-xs text-slate-400 italic">Status: {receiptData.action || "In Transit"}</p>
+                        </td>
+                        <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.origin || "---"}</td>
+                        <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.weight || "---"}</td>
+                        <td className="px-6 py-8 text-right font-black text-brand-primary text-xl">{receiptData.quantity || "1"}</td>
                       </tr>
                     </tbody>
                   </table>
-                  <div className="p-6 border-t-2 border-slate-100 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <p className="text-xl font-bold">Charges</p>
+                  <div className="bg-slate-50/50 p-8 grid grid-cols-2 gap-8 border-t border-slate-200">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          receiptData.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                        }`}>{receiptData.paymentStatus || "PENDING"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Delivery</span>
+                        <span className="text-sm font-black text-brand-primary">{receiptData.estDelivery || "---"}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center border-t border-slate-100 pt-4">
-                      <p className="text-lg font-bold">Shipping-fee</p>
-                      <p className="text-lg font-bold">{receiptData.shippingFee || "---"}</p>
+                    <div className="flex flex-col justify-center items-end space-y-2">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Shipping Fee</p>
+                      <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.shippingFee || "---"}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t-2 border-red-500 pt-4 flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
-                  <p>Charges & Information</p>
+                {/* Footer Section */}
+                <div className="grid grid-cols-3 gap-8 items-end pt-8 border-t border-slate-100">
+                  <div className="col-span-2 space-y-4">
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <ShieldCheck size={20} className="text-brand-secondary" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Security Verification</p>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">This document is digitally signed and verified by Diplomatic Xpress Logistics. Any alteration of this receipt is strictly prohibited and punishable by law.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right space-y-4">
+                    <div className="inline-block border-b-2 border-slate-200 px-8 pb-2">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-8">Authorized Signature</p>
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Logistics Operations Dept.</p>
+                  </div>
                 </div>
 
-                <div className="mt-12 text-center text-slate-400 font-bold italic">
-                  This Is An Online Generated Receipt
+                <div className="mt-12 pt-8 border-t border-slate-50 flex justify-between items-center">
+                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">© 2026 Diplomatic Xpress Logistics. All rights reserved.</p>
+                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">Generated: {new Date().toLocaleString()}</p>
                 </div>
               </div>
             </motion.div>
