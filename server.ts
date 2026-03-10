@@ -246,6 +246,7 @@ app.post("/api/shipments", upload.fields([
       
       if (admin_user) logAdminAction(admin_user, `Created shipment ${id}`);
     })();
+    broadcastUpdate({ type: "SHIPMENT_UPDATE", data: { id, action: "CREATE" } });
     res.status(201).json({ id });
   } catch (err) {
     console.error(err);
@@ -344,6 +345,24 @@ app.post("/api/tickets", (req, res) => {
   });
   
   res.status(201).json({ success: true });
+});
+
+app.delete("/api/shipments/:id", (req, res) => {
+  const { admin_user } = req.query;
+  try {
+    db.transaction(() => {
+      db.prepare("DELETE FROM shipment_updates WHERE shipment_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM shipment_product_photos WHERE shipment_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM shipments WHERE id = ?").run(req.params.id);
+      
+      if (admin_user) logAdminAction(admin_user as string, `Deleted shipment ${req.params.id}`);
+    })();
+    broadcastUpdate({ type: "SHIPMENT_UPDATE", data: { id: req.params.id, action: "DELETE" } });
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Delete shipment error:", err);
+    res.status(500).json({ error: "Failed to delete shipment", details: err.message });
+  }
 });
 
 // Catch-all for API routes to prevent falling through to Vite

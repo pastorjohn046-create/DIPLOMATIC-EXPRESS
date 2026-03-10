@@ -150,7 +150,7 @@ export const SupportPortal = () => {
               {[
                 { icon: Mail, label: "Email Us", val: "info@diplomatic-xpress.com", color: "text-blue-500" },
                 { icon: Phone, label: "Call Us", val: "+1 (800) DIPLOMATIC-X", color: "text-emerald-500" },
-                { icon: MapPin, label: "Visit Us", val: "123 Logistics Way, Tech City", color: "text-rose-500" }
+                { icon: MapPin, label: "Visit Us", val: "123 Logistics Way, Tech City", color: "text-brand-secondary" }
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center ${item.color} border border-slate-100`}>
@@ -201,7 +201,7 @@ export const SupportPortal = () => {
                 </div>
                 <div className="space-y-4">
                   {replies.map((r) => (
-                    <div key={r.id} className={`p-4 rounded-xl border ${r.sender_username === "Admin" ? "bg-indigo-50 border-indigo-100 ml-8" : "bg-white border-slate-100 mr-8"}`}>
+                    <div key={r.id} className={`p-4 rounded-xl border ${r.sender_username === "Admin" ? "bg-blue-50 border-blue-100 ml-8" : "bg-white border-slate-100 mr-8"}`}>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-[10px] font-black text-brand-secondary uppercase">{r.sender_username}</span>
                         <span className="text-[10px] text-slate-400">{new Date(r.timestamp).toLocaleString()}</span>

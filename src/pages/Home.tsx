@@ -1,12 +1,12 @@
 import React from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Shield, Globe, Zap, CheckCircle2, Star, Plane, Bike, Bus } from "lucide-react";
+import { MessageSquare, Shield, Globe, Zap, CheckCircle2, Star, Plane, Bike, Bus } from "lucide-react";
 
 interface HomeProps {
-  onTrackClick: () => void;
+  onSupportClick: () => void;
 }
 
-export const Home = ({ onTrackClick }: HomeProps) => {
+export const Home = ({ onSupportClick }: HomeProps) => {
   return (
     <div className="">
       {/* Hero Section */}
@@ -48,14 +48,14 @@ export const Home = ({ onTrackClick }: HomeProps) => {
             </div>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-brand-primary leading-[1.1] tracking-tighter uppercase">
               CRANE TO TRAIN, <br className="hidden md:block" />
-              <span className="bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">WE DO EVERYTHING.</span>
+              <span className="bg-linear-to-br from-brand-secondary to-brand-accent bg-clip-text text-transparent">WE DO EVERYTHING.</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
               Starting from loading to unloading and maintaining the highest standards in terms of safety while in transit, we take nothing to chance.
             </p>
             <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
-              <button onClick={onTrackClick} className="btn-primary flex items-center justify-center gap-2 text-lg py-4 px-8">
-                Track Your Package <ArrowRight size={20} />
+              <button onClick={onSupportClick} className="btn-primary flex items-center justify-center gap-2 text-lg py-4 px-8">
+                Customer Care <MessageSquare size={20} />
               </button>
               <button className="btn-outline text-lg py-4 px-8">Our Solutions</button>
             </div>
@@ -134,8 +134,8 @@ export const Home = ({ onTrackClick }: HomeProps) => {
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-4">
             <h2 className="text-3xl md:text-4xl font-black text-brand-primary tracking-tight uppercase flex items-baseline justify-center gap-2 flex-wrap">
               WELCOME TO DIPLOMATIC <span className="flex items-baseline">
-                <span className="text-4xl md:text-5xl bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">X</span>
-                <span className="bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">PRESS</span>
+                <span className="text-4xl md:text-5xl bg-linear-to-br from-brand-secondary to-brand-accent bg-clip-text text-transparent">X</span>
+                <span className="bg-linear-to-br from-brand-secondary to-brand-accent bg-clip-text text-transparent">PRESS</span>
               </span> LOGISTICS
             </h2>
             <p className="text-base md:text-lg text-slate-600">Diplomatic Xpress Logistics is on the mission of reducing freight management inefficiencies and providing maximum cost savings for our clients.</p>
@@ -152,7 +152,7 @@ export const Home = ({ onTrackClick }: HomeProps) => {
                 whileHover={{ y: -10 }}
                 className="p-10 rounded-3xl bg-brand-bg border border-slate-100 space-y-6 transition-all"
               >
-                <div className="w-16 h-16 bg-linear-to-br from-brand-secondary to-rose-400 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-secondary/20">
+                <div className="w-16 h-16 bg-linear-to-br from-brand-secondary to-brand-accent text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-secondary/20">
                   <feature.icon size={32} />
                 </div>
                 <h3 className="text-2xl font-bold text-brand-primary">{feature.title}</h3>
@@ -177,7 +177,7 @@ export const Home = ({ onTrackClick }: HomeProps) => {
               { label: "Success Rate", value: "99.9%" }
             ].map((stat, i) => (
               <div key={i} className="space-y-2">
-                <p className="text-5xl font-black bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">{stat.value}</p>
+                <p className="text-5xl font-black bg-linear-to-br from-brand-secondary to-brand-accent bg-clip-text text-transparent">{stat.value}</p>
                 <p className="text-slate-400 font-medium uppercase tracking-widest text-xs">{stat.label}</p>
               </div>
             ))}
@@ -195,7 +195,7 @@ export const Home = ({ onTrackClick }: HomeProps) => {
               <p className="text-xl text-white/80 max-w-2xl mx-auto">Join thousands of businesses that trust DIPLOMATIC XPRESS LOGISTICS for their global shipping needs.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 <button className="bg-white text-brand-primary px-10 py-4 rounded-2xl font-black text-lg hover:bg-slate-50 transition-all">Get Started Now</button>
-                <button className="bg-linear-to-br from-brand-secondary to-rose-400 text-white px-10 py-4 rounded-2xl font-black text-lg hover:opacity-90 transition-all">Contact Sales</button>
+                <button className="bg-linear-to-br from-brand-secondary to-brand-accent text-white px-10 py-4 rounded-2xl font-black text-lg hover:opacity-90 transition-all">Contact Sales</button>
               </div>
             </div>
           </div>

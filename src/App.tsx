@@ -43,7 +43,7 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            {activeTab === "home" && <Home onTrackClick={() => setActiveTab("tracking")} />}
+            {activeTab === "home" && <Home onSupportClick={() => setActiveTab("support")} />}
             {activeTab === "tracking" && <TrackingPortal user={user} setActiveTab={setActiveTab} />}
             {activeTab === "support" && <SupportPortal />}
             {activeTab === "reviews" && <Reviews />}
@@ -73,10 +73,10 @@ export default function App() {
 
       <Footer />
 
-      {/* Floating Action Button for Mobile Quick Access (Optional) */}
+      {/* Floating Action Button for Mobile Quick Access */}
       <div className="fixed bottom-8 right-8 z-40 md:hidden">
         <button 
-          onClick={() => setActiveTab("tracking")}
+          onClick={() => setActiveTab("support")}
           className="w-16 h-16 bg-brand-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform active:scale-95"
         >
           <motion.div
@@ -84,8 +84,7 @@ export default function App() {
             transition={{ duration: 2, repeat: Infinity }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
           </motion.div>
         </button>

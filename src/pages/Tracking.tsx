@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck } from "lucide-react";
+import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { Shipment, User } from "../types";
 
@@ -89,8 +89,8 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
               disabled={loading}
               className="sm:absolute sm:right-3 sm:top-3 sm:bottom-3 btn-primary flex items-center justify-center gap-2 disabled:opacity-50 py-4 sm:py-0 px-8"
             >
-              {loading ? <Clock className="animate-spin" size={20} /> : <Search size={20} />}
-              Track Now
+              {loading ? <Clock className="animate-spin" size={20} /> : <MessageSquare size={20} />}
+              Customer Care
             </button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${(getStatusStep(shipment.status) / 8) * 100}%` }}
-                    className="h-full bg-brand-secondary shadow-[0_0_15px_rgba(79,70,229,0.5)]"
+                    className="h-full bg-brand-secondary shadow-[0_0_15px_rgba(59,130,246,0.5)]"
                   />
                 </div>
                 <div className="relative flex justify-between">

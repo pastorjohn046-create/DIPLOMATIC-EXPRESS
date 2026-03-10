@@ -36,7 +36,8 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     paymentStatus: "NOT AVAILABLE",
     quantity: "1",
     action: "In Progress ♻️",
-    shippingFee: ""
+    shippingFee: "",
+    ownerPhotoUrl: ""
   });
   const [newShipment, setNewShipment] = useState({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Warehouse" });
   const [clientPhoto, setClientPhoto] = useState<File | null>(null);
@@ -61,15 +62,26 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       if (message.type === "NEW_TICKET") {
         setTickets(prev => [message.data, ...prev]);
       } else if (message.type === "TICKET_REPLY") {
-        if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
-          setReplies(prev => [...prev, message.data]);
-        }
+        setReplies(prev => {
+          // Only add if it's for the currently selected ticket and not already there
+          if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
+            return [...prev, message.data];
+          }
+          return prev;
+        });
       } else if (message.type === "SHIPMENT_UPDATE") {
         fetchShipments();
       }
     };
 
     return () => ws.close();
+  }, []); // Removed selectedTicket from dependencies to prevent unnecessary refetches
+
+  // Refetch replies when selectedTicket changes
+  useEffect(() => {
+    if (selectedTicket) {
+      fetchReplies(selectedTicket.id);
+    }
   }, [selectedTicket]);
 
   const fetchUsers = async () => {
@@ -190,6 +202,21 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   };
 
+  const handleDeleteShipment = async (id: string) => {
+    if (!window.confirm(`Are you sure you want to delete shipment ${id}? This will remove all updates and photos.`)) return;
+
+    const res = await fetch(`/api/shipments/${id}?admin_user=${user.username}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      fetchShipments();
+      fetchLogs();
+    } else {
+      alert("Failed to delete shipment.");
+    }
+  };
+
   const fetchReplies = async (ticketId: number) => {
     const res = await fetch(`/api/tickets/${ticketId}/replies`);
     const data = await res.json();
@@ -273,7 +300,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <Truck size={24} className="text-brand-secondary" />
                   Active Shipments
                 </h3>
-                <span className="text-xs font-bold bg-slate-100 px-3 py-1 rounded-full text-slate-500">{shipments.length} Total</span>
+                <div className="flex items-center gap-4">
+                  <button onClick={fetchShipments} className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-brand-secondary/10 hover:text-brand-secondary transition-all">
+                    <History size={16} />
+                  </button>
+                  <span className="text-xs font-bold bg-slate-100 px-3 py-1 rounded-full text-slate-500">{shipments.length} Total</span>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -321,6 +353,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                               className="text-brand-secondary font-bold text-sm hover:underline"
                             >
                               Update Status
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteShipment(s.id)}
+                              className="text-red-400 font-bold text-sm hover:text-red-600"
+                            >
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -468,6 +506,10 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <label className="text-[10px] font-black uppercase text-slate-400">Shipping Fee</label>
                       <input className="input py-2" value={receiptData.shippingFee} onChange={(e) => setReceiptData({...receiptData, shippingFee: e.target.value})} />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Owner Photo URL</label>
+                      <input className="input py-2" placeholder="https://..." value={receiptData.ownerPhotoUrl} onChange={(e) => setReceiptData({...receiptData, ownerPhotoUrl: e.target.value})} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -529,6 +571,16 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
                       <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
                       <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
+                      {receiptData.ownerPhotoUrl && (
+                        <div className="mt-4">
+                          <img 
+                            src={receiptData.ownerPhotoUrl} 
+                            alt="Owner" 
+                            className="w-24 h-24 rounded-xl object-cover border-2 border-slate-100 shadow-sm"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

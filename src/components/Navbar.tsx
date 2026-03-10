@@ -44,20 +44,20 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
             </button>
           ))}
           <button 
-            onClick={() => setActiveTab("tracking")}
+            onClick={() => setActiveTab("support")}
             className="btn-primary"
           >
-            Track Now
+            Customer Care
           </button>
         </div>
 
         {/* Mobile Toggle */}
         <div className="flex items-center gap-2 lg:hidden">
           <button 
-            onClick={() => setActiveTab("tracking")}
+            onClick={() => setActiveTab("support")}
             className="btn-primary py-2 px-3 text-[10px] sm:text-sm"
           >
-            Track
+            Care
           </button>
           <button className="text-brand-primary p-1" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={24} /> : <Menu size={24} />}
