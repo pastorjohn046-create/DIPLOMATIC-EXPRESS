@@ -245,7 +245,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             {user.username[0]}
           </div>
           <div>
-            <h2 className="text-2xl md:text-4xl font-black text-brand-primary tracking-tight">Admin Control</h2>
+            <h2 className="text-2xl md:text-4xl font-black text-brand-primary tracking-tight">Diplomatic <span className="text-brand-secondary">Xpress</span></h2>
             <p className="text-xs md:text-base text-slate-500">Logged in as <span className="font-bold text-brand-secondary">{user.username}</span></p>
           </div>
         </div>
