@@ -44,14 +44,14 @@ export const Home = ({ onTrackClick }: HomeProps) => {
           >
             <div className="inline-flex items-center gap-2 bg-brand-secondary/10 text-brand-secondary px-4 py-2 rounded-full font-bold text-sm mx-auto lg:mx-0">
               <Zap size={16} />
-              <span>Next-Gen Logistics Platform</span>
+              <span>UNBEATABLE TRUCKING AND TRANSPORT SERVICES</span>
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-brand-primary leading-[1.1] tracking-tighter">
-              Ship Faster. <br className="hidden md:block" />
-              <span className="text-brand-secondary">Track Smarter.</span>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-brand-primary leading-[1.1] tracking-tighter uppercase">
+              CRANE TO TRAIN, <br className="hidden md:block" />
+              <span className="bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">WE DO EVERYTHING.</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              The world's most advanced shipping management system. Real-time visual tracking, AI-powered routing, and global reach.
+              Starting from loading to unloading and maintaining the highest standards in terms of safety while in transit, we take nothing to chance.
             </p>
             <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
               <button onClick={onTrackClick} className="btn-primary flex items-center justify-center gap-2 text-lg py-4 px-8">
@@ -132,22 +132,27 @@ export const Home = ({ onTrackClick }: HomeProps) => {
       <section className="py-16 md:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-black text-brand-primary tracking-tight uppercase">Why Choose Diplomatic Express?</h2>
-            <p className="text-base md:text-lg text-slate-600">We combine cutting-edge technology with world-class infrastructure to deliver excellence.</p>
+            <h2 className="text-3xl md:text-4xl font-black text-brand-primary tracking-tight uppercase flex items-baseline justify-center gap-2 flex-wrap">
+              WELCOME TO DIPLOMATIC <span className="flex items-baseline">
+                <span className="text-4xl md:text-5xl bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">X</span>
+                <span className="bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">PRESS</span>
+              </span> LOGISTICS
+            </h2>
+            <p className="text-base md:text-lg text-slate-600">Diplomatic Xpress Logistics is on the mission of reducing freight management inefficiencies and providing maximum cost savings for our clients.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { icon: Globe, title: "Global Network", desc: "Reach over 220 countries and territories with our extensive logistics network." },
-              { icon: Shield, title: "Secure Handling", desc: "Advanced security protocols and insurance coverage for every single shipment." },
-              { icon: Zap, title: "Real-Time Tracking", desc: "Visual proof of delivery and live updates at every step of the journey." }
+              { icon: Globe, title: "Cargo", desc: "Team of cargo experts are always available to help you with any queries you might have, or if you want to consult in length your logistic requirements." },
+              { icon: Shield, title: "Logistic Service", desc: "We provide logistic services in the nation, whether it is freight transportation, supply chain solutions, warehousing and distribution." },
+              { icon: Zap, title: "Storage", desc: "We take pride in catering to a broad range of clientele throughout the country with our warehousing services, which is comprehensive, reliable and flexible." }
             ].map((feature, i) => (
               <motion.div 
                 key={i}
                 whileHover={{ y: -10 }}
                 className="p-10 rounded-3xl bg-brand-bg border border-slate-100 space-y-6 transition-all"
               >
-                <div className="w-16 h-16 bg-brand-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-secondary/20">
+                <div className="w-16 h-16 bg-linear-to-br from-brand-secondary to-rose-400 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-secondary/20">
                   <feature.icon size={32} />
                 </div>
                 <h3 className="text-2xl font-bold text-brand-primary">{feature.title}</h3>
@@ -172,7 +177,7 @@ export const Home = ({ onTrackClick }: HomeProps) => {
               { label: "Success Rate", value: "99.9%" }
             ].map((stat, i) => (
               <div key={i} className="space-y-2">
-                <p className="text-5xl font-black text-brand-secondary">{stat.value}</p>
+                <p className="text-5xl font-black bg-linear-to-br from-brand-secondary to-rose-400 bg-clip-text text-transparent">{stat.value}</p>
                 <p className="text-slate-400 font-medium uppercase tracking-widest text-xs">{stat.label}</p>
               </div>
             ))}
@@ -183,13 +188,14 @@ export const Home = ({ onTrackClick }: HomeProps) => {
       {/* CTA Section */}
       <section className="py-24">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="bg-brand-secondary rounded-[3rem] p-12 lg:p-20 text-center text-white relative overflow-hidden shadow-2xl shadow-brand-secondary/40">
+          <div className="bg-linear-to-br from-brand-primary to-brand-accent rounded-[3rem] p-12 lg:p-20 text-center text-white relative overflow-hidden shadow-2xl shadow-brand-primary/40">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-secondary/20 blur-[100px] rounded-full -mr-48 -mt-48" />
             <div className="relative z-10 space-y-8">
-              <h2 className="text-4xl lg:text-5xl font-black tracking-tight">Ready to optimize your supply chain?</h2>
-              <p className="text-xl text-white/80 max-w-2xl mx-auto">Join thousands of businesses that trust DIPLOMATIC EXPRESS DELIVERY for their global shipping needs.</p>
+              <h2 className="text-4xl lg:text-5xl font-black tracking-tight uppercase">Ready to optimize your supply chain?</h2>
+              <p className="text-xl text-white/80 max-w-2xl mx-auto">Join thousands of businesses that trust DIPLOMATIC XPRESS LOGISTICS for their global shipping needs.</p>
               <div className="flex flex-wrap justify-center gap-4">
-                <button className="bg-white text-brand-secondary px-10 py-4 rounded-2xl font-black text-lg hover:bg-slate-50 transition-all">Get Started Now</button>
-                <button className="bg-brand-primary text-white px-10 py-4 rounded-2xl font-black text-lg hover:bg-brand-primary/90 transition-all">Contact Sales</button>
+                <button className="bg-white text-brand-primary px-10 py-4 rounded-2xl font-black text-lg hover:bg-slate-50 transition-all">Get Started Now</button>
+                <button className="bg-linear-to-br from-brand-secondary to-rose-400 text-white px-10 py-4 rounded-2xl font-black text-lg hover:opacity-90 transition-all">Contact Sales</button>
               </div>
             </div>
           </div>

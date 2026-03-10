@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon } from "lucide-react";
+import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shipment, Ticket, User } from "../types";
 
@@ -16,6 +16,24 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
+  const [showReceiptGen, setShowReceiptGen] = useState(false);
+  const [receiptData, setReceiptData] = useState({
+    trackingId: "",
+    deliveryDate: "",
+    senderName: "",
+    senderAddress: "",
+    receiverName: "",
+    receiverEmail: "",
+    receiverAddress: "",
+    origin: "",
+    content: "Parcel 📦",
+    weight: "",
+    estDelivery: "",
+    paymentStatus: "NOT AVAILABLE",
+    quantity: "1",
+    action: "In Progress ♻️",
+    shippingFee: ""
+  });
   const [newShipment, setNewShipment] = useState({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Warehouse" });
   const [clientPhoto, setClientPhoto] = useState<File | null>(null);
   const [productPhotos, setProductPhotos] = useState<File[]>([]);
@@ -187,6 +205,10 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-4 w-full lg:w-auto">
+          <button onClick={() => setShowReceiptGen(true)} className="btn-outline flex-1 md:flex-none flex items-center justify-center gap-2 py-2 md:py-3 px-3 md:px-4">
+            <FileText size={16} />
+            <span className="text-xs md:text-sm font-bold">Receipt</span>
+          </button>
           <button onClick={() => setShowUsers(true)} className="btn-outline flex-1 md:flex-none flex items-center justify-center gap-2 py-2 md:py-3 px-3 md:px-4">
             <UserIcon size={16} />
             <span className="text-xs md:text-sm font-bold">Users</span>
@@ -304,6 +326,247 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       </div>
 
       <AnimatePresence>
+        {showReceiptGen && (
+          <div 
+            className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"
+            onClick={() => setShowReceiptGen(false)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="card w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-brand-primary tracking-tight">Receipt Generator</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => window.print()} className="btn-outline py-2 px-4 flex items-center gap-2">
+                    <Printer size={16} /> Print
+                  </button>
+                  <button onClick={() => setShowReceiptGen(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div className="space-y-4">
+                  <h4 className="font-bold text-brand-primary border-b pb-2">Basic Info</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Tracking ID</label>
+                      <input className="input py-2" value={receiptData.trackingId} onChange={(e) => setReceiptData({...receiptData, trackingId: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Delivery Date</label>
+                      <input type="date" className="input py-2" value={receiptData.deliveryDate} onChange={(e) => setReceiptData({...receiptData, deliveryDate: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Sender Name</label>
+                    <input className="input py-2" value={receiptData.senderName} onChange={(e) => setReceiptData({...receiptData, senderName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Sender Address</label>
+                    <input className="input py-2" value={receiptData.senderAddress} onChange={(e) => setReceiptData({...receiptData, senderAddress: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-bold text-brand-primary border-b pb-2">Receiver Info</h4>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Name</label>
+                    <input className="input py-2" value={receiptData.receiverName} onChange={(e) => setReceiptData({...receiptData, receiverName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Email</label>
+                    <input className="input py-2" value={receiptData.receiverEmail} onChange={(e) => setReceiptData({...receiptData, receiverEmail: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Address</label>
+                    <input className="input py-2" value={receiptData.receiverAddress} onChange={(e) => setReceiptData({...receiptData, receiverAddress: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="space-y-4 md:col-span-2">
+                  <h4 className="font-bold text-brand-primary border-b pb-2">Consignment Details</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Origin</label>
+                      <input className="input py-2" value={receiptData.origin} onChange={(e) => setReceiptData({...receiptData, origin: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Content</label>
+                      <input className="input py-2" value={receiptData.content} onChange={(e) => setReceiptData({...receiptData, content: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Weight</label>
+                      <input className="input py-2" value={receiptData.weight} onChange={(e) => setReceiptData({...receiptData, weight: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Est. Delivery</label>
+                      <input className="input py-2" value={receiptData.estDelivery} onChange={(e) => setReceiptData({...receiptData, estDelivery: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Payment Status</label>
+                      <input className="input py-2" value={receiptData.paymentStatus} onChange={(e) => setReceiptData({...receiptData, paymentStatus: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Quantity</label>
+                      <input className="input py-2" value={receiptData.quantity} onChange={(e) => setReceiptData({...receiptData, quantity: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Action</label>
+                      <input className="input py-2" value={receiptData.action} onChange={(e) => setReceiptData({...receiptData, action: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400">Shipping Fee</label>
+                      <input className="input py-2" value={receiptData.shippingFee} onChange={(e) => setReceiptData({...receiptData, shippingFee: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Preview (Printable) */}
+              <div id="printable-receipt" className="bg-white p-8 border border-slate-200 rounded-lg shadow-sm font-sans text-slate-800">
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @media print {
+                    body * { visibility: hidden; }
+                    #printable-receipt, #printable-receipt * { visibility: visible; }
+                    #printable-receipt { position: absolute; left: 0; top: 0; width: 100%; }
+                  }
+                `}} />
+                
+                {/* Header */}
+                <div className="bg-brand-primary text-white p-6 -mx-8 -mt-8 mb-8 flex justify-between items-start">
+                  <div className="space-y-1">
+                    <p className="text-xs opacity-70">Diplomatic Xpress Logistics</p>
+                    <div className="flex gap-8">
+                      <div>
+                        <p className="text-[10px] uppercase font-bold opacity-60">Tracking ID</p>
+                        <p className="text-lg font-black">{receiptData.trackingId || "---"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold opacity-60">Delivery Date</p>
+                        <p className="text-lg font-black">{receiptData.deliveryDate || "---"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logo Section */}
+                <div className="flex flex-col items-center mb-10">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-16 h-16 relative flex items-center justify-center">
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <path d="M20 20 C 40 10, 80 10, 90 50 C 80 90, 40 90, 20 80" fill="none" stroke="#002D5B" strokeWidth="8" strokeLinecap="round" />
+                        <path d="M20 20 L 50 50 L 20 80" fill="none" stroke="#002D5B" strokeWidth="8" strokeLinecap="round" />
+                        <circle cx="50" cy="50" r="10" fill="#E11D48" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <h1 className="text-2xl font-black text-[#002D5B] leading-none">DIPLOMATIC <span className="text-[#E11D48]">XPRESS</span></h1>
+                      <h2 className="text-xl font-black text-[#002D5B] tracking-[0.2em]">LOGISTICS</h2>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-black border-b-2 border-slate-100 pb-2 uppercase tracking-widest">Sender Details:</h3>
+                    <div className="space-y-1">
+                      <p className="font-bold text-lg">{receiptData.senderName || "---"}</p>
+                      <p className="text-slate-500 text-sm">{receiptData.senderAddress || "---"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-black border-b-2 border-slate-100 pb-2 uppercase tracking-widest">Receiver Details:</h3>
+                    <div className="space-y-1">
+                      <p className="font-bold text-lg">{receiptData.receiverName || "---"}</p>
+                      <p className="text-brand-secondary text-sm font-medium">{receiptData.receiverEmail || "---"}</p>
+                      <p className="text-slate-500 text-sm leading-relaxed">{receiptData.receiverAddress || "---"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Consignment Table */}
+                <div className="border-2 border-red-500 rounded-lg overflow-hidden mb-8">
+                  <div className="bg-slate-50 px-4 py-1 border-b border-red-500">
+                    <p className="text-[10px] font-bold text-red-500 uppercase">Consignment Details</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-4 p-6">
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold">Origin</p>
+                      <p className="text-slate-600">{receiptData.origin || "---"}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-sm font-bold">Arrived storage facility 🇰🇷</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold">Content</p>
+                      <p className="text-slate-600">{receiptData.content || "---"}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-slate-600">Parcel 📦</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold">Weight</p>
+                      <p className="text-slate-600">{receiptData.weight || "---"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold">Estimated Delivery</p>
+                      <p className="text-slate-600">{receiptData.estDelivery || "---"}</p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-100 col-span-2 flex justify-between items-center">
+                      <p className="text-sm font-bold">Payment Status</p>
+                      <span className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded uppercase">{receiptData.paymentStatus || "NOT AVAILABLE"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charges Table */}
+                <div className="border-2 border-slate-800 rounded-lg overflow-hidden mb-12">
+                  <table className="w-full text-center">
+                    <thead>
+                      <tr className="border-b-2 border-red-500">
+                        <th className="py-3 text-lg font-bold border-r-2 border-slate-800">Quantity</th>
+                        <th className="py-3 text-lg font-bold border-r-2 border-slate-800">Weight</th>
+                        <th className="py-3 text-lg font-bold">action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-4 text-lg border-r-2 border-slate-800">{receiptData.quantity || "---"}</td>
+                        <td className="py-4 text-lg border-r-2 border-slate-800">{receiptData.weight || "---"}</td>
+                        <td className="py-4 text-lg font-medium">{receiptData.action || "---"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="p-6 border-t-2 border-slate-100 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-xl font-bold">Charges</p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-slate-100 pt-4">
+                      <p className="text-lg font-bold">Shipping-fee</p>
+                      <p className="text-lg font-bold">{receiptData.shippingFee || "---"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t-2 border-red-500 pt-4 flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
+                  <p>Charges & Information</p>
+                </div>
+
+                <div className="mt-12 text-center text-slate-400 font-bold italic">
+                  This Is An Online Generated Receipt
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showUsers && (
           <div 
             className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"

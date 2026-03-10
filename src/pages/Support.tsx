@@ -128,8 +128,8 @@ export const SupportPortal = () => {
             <h4 className="text-xl font-black text-brand-primary">Direct Contact</h4>
             <div className="space-y-6">
               {[
-                { icon: Mail, label: "Email Us", val: "support@diplomatic-express.com", color: "text-blue-500" },
-                { icon: Phone, label: "Call Us", val: "+1 (800) DIPLOMATIC", color: "text-emerald-500" },
+                { icon: Mail, label: "Email Us", val: "info@diplomatic-xpress.com", color: "text-blue-500" },
+                { icon: Phone, label: "Call Us", val: "+1 (800) DIPLOMATIC-X", color: "text-emerald-500" },
                 { icon: MapPin, label: "Visit Us", val: "123 Logistics Way, Tech City", color: "text-rose-500" }
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4">

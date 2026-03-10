@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Truck } from "lucide-react";
+import { Logo } from "./Logo";
 
 export const SplashScreen = () => {
   return (
@@ -20,10 +21,10 @@ export const SplashScreen = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="text-center space-y-2"
+        className="flex flex-col items-center"
       >
-        <h1 className="text-4xl font-black text-white tracking-tighter">DIPLOMATIC EXPRESS</h1>
-        <p className="text-brand-secondary font-bold tracking-widest text-xs uppercase">Global Logistics Solutions</p>
+        <Logo light size={80} className="scale-125 md:scale-150" />
+        <p className="text-brand-secondary font-bold tracking-[0.4em] text-[10px] md:text-xs uppercase mt-8">Secure Transport and Logistics</p>
       </motion.div>
     </div>
   );

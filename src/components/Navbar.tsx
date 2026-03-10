@@ -1,6 +1,7 @@
 import React from "react";
-import { Truck, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { motion } from "motion/react";
+import { Logo } from "./Logo";
 
 interface NavbarProps {
   activeTab: string;
@@ -14,6 +15,7 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
   const navItems = [
     { id: "home", label: "Home" },
     { id: "tracking", label: "Track Shipment" },
+    { id: "reviews", label: "Reviews" },
     { id: "support", label: "Support" },
   ];
 
@@ -26,13 +28,8 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
   return (
     <nav className="fixed top-0 left-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
-        <div className="flex items-center gap-2 md:gap-3 cursor-pointer shrink-0" onClick={() => setActiveTab("home")}>
-          <div className="bg-brand-secondary p-1.5 md:p-2 rounded-xl shadow-lg shadow-brand-secondary/20 shrink-0">
-            <Truck className="text-white" size={18} />
-          </div>
-          <span className="text-[10px] sm:text-base md:text-xl font-black text-brand-primary tracking-tighter leading-none whitespace-nowrap">
-            DIPLOMATIC <span className="text-brand-secondary">EXPRESS</span>
-          </span>
+        <div className="cursor-pointer shrink-0" onClick={() => setActiveTab("home")}>
+          <Logo />
         </div>
 
         {/* Desktop Nav */}

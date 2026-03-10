@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { Lock, User as UserIcon, ArrowRight, Truck } from "lucide-react";
+import { Lock, User as UserIcon, ArrowRight, Truck, Globe } from "lucide-react";
 import { User } from "../types";
 
 interface AuthProps {
@@ -57,7 +57,7 @@ export const Auth = ({ onLogin }: AuthProps) => {
         className="card w-full max-w-md space-y-8 p-8 md:p-10 shadow-2xl shadow-brand-primary/5 border-slate-100"
       >
         <div className="text-center space-y-4">
-          <div className="bg-brand-secondary p-5 rounded-2xl inline-block mb-4 shadow-xl shadow-brand-secondary/20">
+          <div className="bg-linear-to-br from-brand-secondary to-rose-400 p-5 rounded-2xl inline-block mb-4 shadow-xl shadow-brand-secondary/20">
             <Truck className="text-white" size={36} />
           </div>
           <div className="space-y-1">
@@ -65,7 +65,7 @@ export const Auth = ({ onLogin }: AuthProps) => {
               {isLogin ? "Welcome Back" : "Create Account"}
             </h2>
             <p className="text-sm text-slate-500 font-medium">
-              {isLogin ? "Access your Diplomatic Express account" : "Join our global logistics network"}
+              {isLogin ? "Access your Diplomatic Xpress account" : "Join our global logistics network"}
             </p>
           </div>
         </div>
@@ -78,39 +78,48 @@ export const Auth = ({ onLogin }: AuthProps) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-xs font-black uppercase tracking-widest text-slate-400">Email Address</label>
-              <input
-                required
-                type="email"
-                className="input"
-                placeholder="john@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <div className="relative group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3 border-r border-slate-200 pr-3">
+                  <Globe className="text-slate-400 group-focus-within:text-brand-secondary transition-colors" size={20} />
+                </div>
+                <input
+                  required
+                  type="email"
+                  className="input pl-16"
+                  placeholder="john@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
             </div>
           )}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className="text-xs font-black uppercase tracking-widest text-slate-400">Username</label>
-            <div className="relative">
-              <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3 border-r border-slate-200 pr-3">
+                <UserIcon className="text-slate-400 group-focus-within:text-brand-secondary transition-colors" size={20} />
+              </div>
               <input
                 required
-                className="input pl-14"
+                className="input pl-16"
                 placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className="text-xs font-black uppercase tracking-widest text-slate-400">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3 border-r border-slate-200 pr-3">
+                <Lock className="text-slate-400 group-focus-within:text-brand-secondary transition-colors" size={20} />
+              </div>
               <input
                 required
                 type="password"
-                className="input pl-14"
+                className="input pl-16"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -7,6 +7,7 @@ import { Home } from "./pages/Home";
 import { AdminDashboard } from "./pages/Admin";
 import { TrackingPortal } from "./pages/Tracking";
 import { SupportPortal } from "./pages/Support";
+import { Reviews } from "./pages/Reviews";
 import { SplashScreen } from "./components/SplashScreen";
 import { Auth } from "./pages/Auth";
 
@@ -45,6 +46,7 @@ export default function App() {
             {activeTab === "home" && <Home onTrackClick={() => setActiveTab("tracking")} />}
             {activeTab === "tracking" && <TrackingPortal user={user} setActiveTab={setActiveTab} />}
             {activeTab === "support" && <SupportPortal />}
+            {activeTab === "reviews" && <Reviews />}
             {activeTab === "dashboard" && (
               user ? (
                 user.role === 'admin' ? (
@@ -56,7 +58,7 @@ export default function App() {
                     </div>
                     <div className="space-y-2">
                       <h2 className="text-3xl font-black text-brand-primary tracking-tight">Access Denied</h2>
-                      <p className="text-slate-500">This portal is reserved for DIPLOMATIC EXPRESS administrators only. Please contact support if you believe this is an error.</p>
+                      <p className="text-slate-500">This portal is reserved for DIPLOMATIC XPRESS administrators only. Please contact support if you believe this is an error.</p>
                     </div>
                     <button onClick={() => setActiveTab("home")} className="btn-primary w-full py-4">Return to Home</button>
                   </div>

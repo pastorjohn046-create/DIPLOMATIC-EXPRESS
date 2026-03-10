@@ -1,19 +1,15 @@
 import React from "react";
-import { Truck, Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Logo } from "./Logo";
 
 export const Footer = () => {
   return (
     <footer className="bg-brand-primary text-white pt-20 pb-10">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-brand-secondary p-2 rounded-xl">
-              <Truck className="text-white" size={24} />
-            </div>
-            <span className="text-lg md:text-xl font-black tracking-tighter">DIPLOMATIC EXPRESS DELIVERY</span>
-          </div>
+          <Logo light size={48} />
           <p className="text-slate-400 leading-relaxed">
-            Revolutionizing global logistics with real-time tracking, visual proof of delivery, and seamless supply chain management.
+            Diplomatic Xpress Logistics is on the mission of reducing freight management inefficiencies and providing maximum cost savings for our clients.
           </p>
           <div className="flex gap-4">
             {[Facebook, Twitter, Linkedin, Instagram].map((Icon, i) => (
@@ -49,11 +45,11 @@ export const Footer = () => {
           <ul className="space-y-4 text-slate-400">
             <li className="flex items-center gap-3">
               <Mail size={18} className="text-brand-secondary" />
-              <span>support@diplomatic-express.com</span>
+              <span>info@diplomatic-xpress.com</span>
             </li>
             <li className="flex items-center gap-3">
               <Phone size={18} className="text-brand-secondary" />
-              <span>+1 (800) DIPLOMATIC</span>
+              <span>+1 (800) DIPLOMATIC-X</span>
             </li>
             <li className="flex items-center gap-3">
               <MapPin size={18} className="text-brand-secondary" />
@@ -63,7 +59,7 @@ export const Footer = () => {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-20 pt-10 border-t border-white/10 text-center text-slate-500 text-sm">
-        <p>© {new Date().getFullYear()} DIPLOMATIC EXPRESS DELIVERY. All rights reserved. Built for modern logistics.</p>
+        <p>© {new Date().getFullYear()} DIPLOMATIC XPRESS LOGISTICS. All rights reserved. Built for modern logistics.</p>
       </div>
     </footer>
   );
