@@ -186,6 +186,13 @@ function logAdminAction(username: string, action: string) {
   db.prepare("INSERT INTO admin_logs (username, action) VALUES (?, ?)").run(username, action);
 }
 
+// Authorization middleware helper
+const verifyAdmin = (username: string | undefined) => {
+  if (!username) return false;
+  const user = db.prepare("SELECT role FROM users WHERE username = ?").get(username) as any;
+  return user && user.role === 'admin';
+};
+
 // Multer for photo uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -234,6 +241,10 @@ app.post("/api/shipments", upload.fields([
   const client_photo_url = files?.['client_photo'] ? `/uploads/${files['client_photo'][0].filename}` : null;
   const product_photos = files?.['product_photos'] || [];
 
+  if (!verifyAdmin(admin_user)) {
+    return res.status(403).json({ error: "Unauthorized: Admin access required" });
+  }
+
   try {
     db.transaction(() => {
       db.prepare("INSERT INTO shipments (id, customer_name, client_phone, client_photo_url, origin, destination, status) VALUES (?, ?, ?, ?, ?, ?, ?)")
@@ -266,6 +277,11 @@ app.get("/api/shipments/:id", (req, res) => {
 
 app.put("/api/shipments/:id", (req, res) => {
   const { customer_name, client_phone, origin, destination, admin_user } = req.body;
+  
+  if (!verifyAdmin(admin_user)) {
+    return res.status(403).json({ error: "Unauthorized: Admin access required" });
+  }
+
   try {
     db.prepare("UPDATE shipments SET customer_name = ?, client_phone = ?, origin = ?, destination = ? WHERE id = ?")
       .run(customer_name, client_phone, origin, destination, req.params.id);
@@ -280,6 +296,11 @@ app.put("/api/shipments/:id", (req, res) => {
 
 app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
   const { status, location, notes, admin_user } = req.body;
+  
+  if (!verifyAdmin(admin_user)) {
+    return res.status(403).json({ error: "Unauthorized: Admin access required" });
+  }
+
   const photo_url = (req as any).file ? `/uploads/${(req as any).file.filename}` : null;
   
   db.prepare("INSERT INTO shipment_updates (shipment_id, status, location, photo_url, notes) VALUES (?, ?, ?, ?, ?)")
@@ -349,6 +370,11 @@ app.post("/api/tickets", (req, res) => {
 
 app.delete("/api/shipments/:id", (req, res) => {
   const { admin_user } = req.query;
+  
+  if (!verifyAdmin(admin_user as string)) {
+    return res.status(403).json({ error: "Unauthorized: Admin access required" });
+  }
+
   try {
     db.transaction(() => {
       db.prepare("DELETE FROM shipment_updates WHERE shipment_id = ?").run(req.params.id);

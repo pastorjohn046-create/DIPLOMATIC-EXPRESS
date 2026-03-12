@@ -10,6 +10,7 @@ import { SupportPortal } from "./pages/Support";
 import { Reviews } from "./pages/Reviews";
 import { SplashScreen } from "./components/SplashScreen";
 import { Auth } from "./pages/Auth";
+import { ClientDashboard } from "./pages/ClientDashboard";
 
 import { User } from "./types";
 
@@ -52,16 +53,7 @@ export default function App() {
                 user.role === 'admin' ? (
                   <AdminDashboard user={user} onLogout={() => setUser(null)} />
                 ) : (
-                  <div className="py-20 text-center space-y-6 max-w-md mx-auto">
-                    <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
-                      <Lock size={40} />
-                    </div>
-                    <div className="space-y-2">
-                      <h2 className="text-3xl font-black text-brand-primary tracking-tight">Access Denied</h2>
-                      <p className="text-slate-500">This portal is reserved for DIPLOMATIC XPRESS administrators only. Please contact support if you believe this is an error.</p>
-                    </div>
-                    <button onClick={() => setActiveTab("home")} className="btn-primary w-full py-4">Return to Home</button>
-                  </div>
+                  <ClientDashboard user={user} onLogout={() => setUser(null)} setActiveTab={setActiveTab} />
                 )
               ) : (
                 <Auth onLogin={(u) => setUser(u)} />

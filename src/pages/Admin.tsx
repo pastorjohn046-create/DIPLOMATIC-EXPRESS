@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck } from "lucide-react";
+import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck, MapPin, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shipment, Ticket, User } from "../types";
 
@@ -43,6 +43,8 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [clientPhoto, setClientPhoto] = useState<File | null>(null);
   const [productPhotos, setProductPhotos] = useState<File[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [isViewingShipment, setIsViewingShipment] = useState(false);
+  const [viewingShipmentData, setViewingShipmentData] = useState<any>(null);
   const [isEditingShipment, setIsEditingShipment] = useState(false);
   const [editShipmentData, setEditShipmentData] = useState({ customer_name: "", client_phone: "", origin: "", destination: "" });
   const [updateData, setUpdateData] = useState({ status: "Warehouse", location: "", notes: "" });
@@ -101,8 +103,25 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       if (!res.ok) throw new Error("Failed to fetch shipments");
       const data = await res.json();
       setShipments(data);
+      
+      // If we are viewing a shipment, refresh its data too
+      if (isViewingShipment && viewingShipmentData) {
+        fetchViewingShipment(viewingShipmentData.id);
+      }
     } catch (err) {
       console.error("Fetch shipments error:", err);
+    }
+  };
+
+  const fetchViewingShipment = async (id: string) => {
+    try {
+      const res = await fetch(`/api/shipments/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setViewingShipmentData(data);
+      }
+    } catch (err) {
+      console.error("Fetch viewing shipment error:", err);
     }
   };
 
@@ -315,6 +334,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <th className="pb-4 font-bold">Customer</th>
                       <th className="pb-4 font-bold">Destination</th>
                       <th className="pb-4 font-bold">Status</th>
+                      <th className="pb-4 font-bold">Claimed By</th>
                       <th className="pb-4 font-bold text-right">Action</th>
                     </tr>
                   </thead>
@@ -331,8 +351,24 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                             {s.status}
                           </span>
                         </td>
+                        <td className="py-5">
+                          {s.claimed_by ? (
+                            <span className="text-xs font-bold text-brand-secondary">@{s.claimed_by}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300 italic">Unclaimed</span>
+                          )}
+                        </td>
                         <td className="py-5 text-right">
                           <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => {
+                                fetchViewingShipment(s.id);
+                                setIsViewingShipment(true);
+                              }}
+                              className="text-slate-400 font-bold text-sm hover:text-brand-secondary"
+                            >
+                              View
+                            </button>
                             <button 
                               onClick={() => {
                                 setSelectedShipment(s);
@@ -733,6 +769,120 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                 {logs.length === 0 && (
                   <div className="text-center py-10 text-slate-400">No activity logged yet.</div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isViewingShipment && viewingShipmentData && (
+          <div 
+            className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"
+            onClick={() => { setIsViewingShipment(false); setViewingShipmentData(null); }}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-brand-secondary/10 text-brand-secondary rounded-xl flex items-center justify-center">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-brand-primary tracking-tight">Shipment Details</h3>
+                    <p className="text-sm font-mono font-bold text-brand-secondary">{viewingShipmentData.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setIsViewingShipment(false); setViewingShipmentData(null); }} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Customer</p>
+                    <p className="font-bold text-brand-primary">{viewingShipmentData.customer_name}</p>
+                    <p className="text-xs text-slate-500">{viewingShipmentData.client_phone}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Route</p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-brand-primary">{viewingShipmentData.origin}</span>
+                      <ChevronRight size={14} className="text-slate-300" />
+                      <span className="font-bold text-brand-secondary">{viewingShipmentData.destination}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Status</p>
+                    <span className="px-3 py-1 bg-brand-secondary text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
+                      {viewingShipmentData.status}
+                    </span>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Claimed By</p>
+                    <p className="font-bold text-brand-primary">{viewingShipmentData.claimed_by || "Unclaimed"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h4 className="text-lg font-black text-brand-primary tracking-tight flex items-center gap-2">
+                  <History size={20} className="text-brand-secondary" />
+                  Transit Timeline
+                </h4>
+                <div className="space-y-6 border-l-2 border-slate-100 ml-3 pl-6">
+                  {viewingShipmentData.updates?.map((update: any, i: number) => (
+                    <div key={i} className="relative">
+                      <div className="absolute -left-[1.85rem] top-1 w-3 h-3 rounded-full bg-brand-secondary border-2 border-white shadow-sm" />
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start">
+                          <p className="font-bold text-brand-primary">{update.status}</p>
+                          <span className="text-[10px] font-bold text-slate-400">{new Date(update.timestamp).toLocaleString()}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <MapPin size={12} />
+                          {update.location}
+                        </p>
+                        {update.notes && <p className="text-xs text-slate-400 italic">"{update.notes}"</p>}
+                      </div>
+                    </div>
+                  ))}
+                  {(!viewingShipmentData.updates || viewingShipmentData.updates.length === 0) && (
+                    <p className="text-sm text-slate-400 italic">No updates recorded yet.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-8 pt-8 border-t border-slate-100 flex gap-4">
+                <button 
+                  onClick={() => {
+                    setSelectedShipment(viewingShipmentData);
+                    setIsViewingShipment(false);
+                  }}
+                  className="btn-primary flex-1 py-3"
+                >
+                  Update Status
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditShipmentData({
+                      customer_name: viewingShipmentData.customer_name,
+                      client_phone: viewingShipmentData.client_phone || "",
+                      origin: viewingShipmentData.origin,
+                      destination: viewingShipmentData.destination
+                    });
+                    setSelectedShipment(viewingShipmentData);
+                    setIsEditingShipment(true);
+                    setIsViewingShipment(false);
+                  }}
+                  className="btn-outline flex-1 py-3"
+                >
+                  Edit Details
+                </button>
               </div>
             </motion.div>
           </div>

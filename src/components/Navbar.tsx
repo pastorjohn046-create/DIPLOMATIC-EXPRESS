@@ -47,7 +47,7 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
             onClick={() => setActiveTab("support")}
             className="btn-primary"
           >
-            Customer Care
+            Support
           </button>
         </div>
 
@@ -55,9 +55,9 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
         <div className="flex items-center gap-2 lg:hidden">
           <button 
             onClick={() => setActiveTab("support")}
-            className="btn-primary py-2 px-3 text-[10px] sm:text-sm"
+            className="btn-primary py-2 px-3 text-[10px] sm:text-xs"
           >
-            Care
+            Support
           </button>
           <button className="text-brand-primary p-1" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X size={24} /> : <Menu size={24} />}

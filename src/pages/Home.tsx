@@ -55,7 +55,7 @@ export const Home = ({ onSupportClick }: HomeProps) => {
             </p>
             <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
               <button onClick={onSupportClick} className="btn-primary flex items-center justify-center gap-2 text-lg py-4 px-8">
-                Customer Care <MessageSquare size={20} />
+                Support <MessageSquare size={20} />
               </button>
               <button className="btn-outline text-lg py-4 px-8">Our Solutions</button>
             </div>

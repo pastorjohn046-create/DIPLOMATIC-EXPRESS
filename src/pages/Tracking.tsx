@@ -89,8 +89,8 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
               disabled={loading}
               className="sm:absolute sm:right-3 sm:top-3 sm:bottom-3 btn-primary flex items-center justify-center gap-2 disabled:opacity-50 py-4 sm:py-0 px-8"
             >
-              {loading ? <Clock className="animate-spin" size={20} /> : <MessageSquare size={20} />}
-              Customer Care
+              {loading ? <Clock className="animate-spin" size={20} /> : <Search size={20} />}
+              Track
             </button>
           </div>
         </div>
