@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck, MapPin, ChevronRight } from "lucide-react";
+import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck, MapPin, ChevronRight, Plane, Plus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Shipment, Ticket, User } from "../types";
+import { Shipment, Ticket, User, Flight } from "../types";
 
 interface AdminDashboardProps {
   user: User;
@@ -12,9 +12,21 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [flights, setFlights] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
-  const [activeAdminTab, setActiveAdminTab] = useState<"shipments" | "cs">("shipments");
+  const [activeAdminTab, setActiveAdminTab] = useState<"shipments" | "cs" | "flights">("shipments");
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingFlight, setIsAddingFlight] = useState(false);
+  const [newFlight, setNewFlight] = useState({
+    airline: "",
+    flight_number: "",
+    origin: "",
+    destination: "",
+    departure_time: "",
+    arrival_time: "",
+    price: "",
+    available_seats: "100"
+  });
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [newReply, setNewReply] = useState("");
@@ -43,11 +55,15 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [clientPhoto, setClientPhoto] = useState<File | null>(null);
   const [productPhotos, setProductPhotos] = useState<File[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [selectedFlight, setSelectedFlight] = useState<any | null>(null);
   const [isViewingShipment, setIsViewingShipment] = useState(false);
+  const [isViewingFlight, setIsViewingFlight] = useState(false);
   const [viewingShipmentData, setViewingShipmentData] = useState<any>(null);
+  const [viewingFlightData, setViewingFlightData] = useState<any>(null);
   const [isEditingShipment, setIsEditingShipment] = useState(false);
   const [editShipmentData, setEditShipmentData] = useState({ customer_name: "", client_phone: "", origin: "", destination: "" });
   const [updateData, setUpdateData] = useState({ status: "Warehouse", location: "", notes: "" });
+  const [flightUpdateData, setFlightUpdateData] = useState({ status: "Scheduled", location: "", notes: "" });
   const [photo, setPhoto] = useState<File | null>(null);
 
   useEffect(() => {
@@ -55,6 +71,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     fetchTickets();
     fetchLogs();
     fetchUsers();
+    fetchFlights();
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -86,6 +103,30 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   }, [selectedTicket]);
 
+  const fetchViewingShipment = async (id: string) => {
+    try {
+      const res = await fetch(`/api/shipments/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setViewingShipmentData(data);
+      }
+    } catch (err) {
+      console.error("Fetch viewing shipment error:", err);
+    }
+  };
+
+  const fetchViewingFlight = async (id: number) => {
+    try {
+      const res = await fetch(`/api/flights/track/${flights.find(f => f.id === id)?.flight_number}`);
+      if (res.ok) {
+        const data = await res.json();
+        setViewingFlightData(data);
+      }
+    } catch (err) {
+      console.error("Fetch viewing flight error:", err);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       const res = await fetch("/api/users");
@@ -113,15 +154,47 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   };
 
-  const fetchViewingShipment = async (id: string) => {
+  const fetchFlights = async () => {
     try {
-      const res = await fetch(`/api/shipments/${id}`);
+      const res = await fetch("/api/flights");
       if (res.ok) {
         const data = await res.json();
-        setViewingShipmentData(data);
+        setFlights(data);
       }
     } catch (err) {
-      console.error("Fetch viewing shipment error:", err);
+      console.error("Fetch flights error:", err);
+    }
+  };
+
+  const handleAddFlight = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/flights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newFlight, price: Number(newFlight.price), available_seats: Number(newFlight.available_seats), admin_user: user.username }),
+      });
+      if (res.ok) {
+        setIsAddingFlight(false);
+        setNewFlight({ airline: "", flight_number: "", origin: "", destination: "", departure_time: "", arrival_time: "", price: "", available_seats: "100" });
+        fetchFlights();
+        fetchLogs();
+      }
+    } catch (err) {
+      console.error("Add flight error:", err);
+    }
+  };
+
+  const handleDeleteFlight = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this flight? All bookings will be lost.")) return;
+    try {
+      const res = await fetch(`/api/flights/${id}?admin_user=${user.username}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchFlights();
+        fetchLogs();
+      }
+    } catch (err) {
+      console.error("Delete flight error:", err);
     }
   };
 
@@ -242,6 +315,24 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     setReplies(data);
   };
 
+  const handleUpdateFlightStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFlight) return;
+
+    const res = await fetch(`/api/flights/${selectedFlight.id}/updates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...flightUpdateData, admin_user: user.username }),
+    });
+
+    if (res.ok) {
+      setSelectedFlight(null);
+      setFlightUpdateData({ status: "Scheduled", location: "", notes: "" });
+      fetchFlights();
+      fetchLogs();
+    }
+  };
+
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicket || !newReply) return;
@@ -253,6 +344,17 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     if (res.ok) {
       setNewReply("");
       fetchReplies(selectedTicket.id);
+    }
+  };
+
+  const handleOwnerPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptData({ ...receiptData, ownerPhotoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -308,10 +410,17 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           {tickets.some(t => t.status === 'Open') && <span className="w-2 h-2 bg-brand-secondary rounded-full animate-pulse" />}
           {activeAdminTab === "cs" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
         </button>
+        <button 
+          onClick={() => setActiveAdminTab("flights")}
+          className={`px-8 py-4 font-black uppercase tracking-widest text-sm transition-all relative flex items-center gap-2 ${activeAdminTab === "flights" ? "text-brand-secondary" : "text-slate-400 hover:text-brand-primary"}`}
+        >
+          Flights
+          {activeAdminTab === "flights" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-10">
-        {activeAdminTab === "shipments" ? (
+        {activeAdminTab === "shipments" && (
           <div className="space-y-8">
             <div className="card">
               <div className="flex items-center justify-between mb-8">
@@ -405,7 +514,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeAdminTab === "cs" && (
           <div className="space-y-8">
             <div className="card">
               <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
@@ -437,6 +548,99 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     <p className="text-slate-400 font-bold">No customer messages yet.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeAdminTab === "flights" && (
+          <div className="space-y-8">
+            <div className="card">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Plane size={24} className="text-brand-secondary" />
+                  Flight Management
+                </h3>
+                <button onClick={() => setIsAddingFlight(true)} className="btn-primary flex items-center gap-2 py-2 px-4">
+                  <Plane size={16} />
+                  Add Flight
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-widest">
+                      <th className="pb-4 font-bold">Airline / Flight</th>
+                      <th className="pb-4 font-bold">Route</th>
+                      <th className="pb-4 font-bold">Departure</th>
+                      <th className="pb-4 font-bold">Price</th>
+                      <th className="pb-4 font-bold">Seats</th>
+                      <th className="pb-4 font-bold text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {flights.map((f) => (
+                      <tr key={f.id} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="py-5">
+                          <p className="font-bold text-brand-primary">{f.airline}</p>
+                          <p className="text-xs text-slate-400">{f.flight_number}</p>
+                        </td>
+                        <td className="py-5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-brand-primary">{f.origin}</span>
+                            <ChevronRight size={12} className="text-slate-300" />
+                            <span className="font-bold text-brand-secondary">{f.destination}</span>
+                          </div>
+                        </td>
+                        <td className="py-5">
+                          <p className="text-sm font-bold text-brand-primary">{new Date(f.departure_time).toLocaleString()}</p>
+                        </td>
+                        <td className="py-5">
+                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                            f.status === "Landed" ? "bg-emerald-100 text-emerald-700" : 
+                            f.status === "In-Air" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-700"
+                          }`}>
+                            {f.status}
+                          </span>
+                        </td>
+                        <td className="py-5">
+                          <p className="font-black text-brand-primary">${f.price}</p>
+                        </td>
+                        <td className="py-5">
+                          <p className="text-sm font-bold text-slate-500">{f.available_seats} left</p>
+                        </td>
+                        <td className="py-5 text-right">
+                          <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => {
+                                fetchViewingFlight(f.id);
+                                setIsViewingFlight(true);
+                              }}
+                              className="text-slate-400 font-bold text-sm hover:text-brand-primary"
+                            >
+                              History
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedFlight(f);
+                                setFlightUpdateData({ status: f.status, location: "", notes: "" });
+                              }}
+                              className="text-brand-secondary font-bold text-sm hover:underline"
+                            >
+                              Update
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteFlight(f.id)}
+                              className="text-red-400 hover:text-red-600 font-bold text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -543,8 +747,8 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <input className="input py-2" value={receiptData.shippingFee} onChange={(e) => setReceiptData({...receiptData, shippingFee: e.target.value})} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Owner Photo URL</label>
-                      <input className="input py-2" placeholder="https://..." value={receiptData.ownerPhotoUrl} onChange={(e) => setReceiptData({...receiptData, ownerPhotoUrl: e.target.value})} />
+                      <label className="text-[10px] font-black uppercase text-slate-400">Owner Photo</label>
+                      <input type="file" className="input py-2 text-xs" accept="image/*" onChange={handleOwnerPhotoChange} />
                     </div>
                   </div>
                 </div>
@@ -965,6 +1169,152 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               <form onSubmit={handleReply} className="flex gap-4">
                 <input className="input flex-1" placeholder="Type your reply..." value={newReply} onChange={(e) => setNewReply(e.target.value)} />
                 <button type="submit" className="btn-primary px-8">Reply</button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {isViewingFlight && viewingFlightData && (
+          <div 
+            className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"
+            onClick={() => setIsViewingFlight(false)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.9 }} 
+              className="card w-full max-w-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-brand-primary tracking-tight">Flight History: {viewingFlightData.flight_number}</h3>
+                <button onClick={() => setIsViewingFlight(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+              </div>
+              <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                {viewingFlightData.updates?.map((u: any, i: number) => (
+                  <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="px-2 py-0.5 bg-brand-secondary/10 text-brand-secondary text-[10px] font-black rounded uppercase">{u.status}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{new Date(u.timestamp).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-700 mb-1">{u.location || "No location provided"}</p>
+                    {u.notes && <p className="text-sm text-slate-500 italic">"{u.notes}"</p>}
+                  </div>
+                ))}
+                {(!viewingFlightData.updates || viewingFlightData.updates.length === 0) && (
+                  <p className="text-center py-10 text-slate-400 font-bold">No history available.</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {selectedFlight && (
+          <div 
+            className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"
+            onClick={() => setSelectedFlight(null)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="card w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-brand-primary tracking-tight">Update Flight: {selectedFlight.flight_number}</h3>
+                <button onClick={() => setSelectedFlight(null)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+              </div>
+              <form onSubmit={handleUpdateFlightStatus} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Status</label>
+                  <select className="input" value={flightUpdateData.status} onChange={(e) => setFlightUpdateData({ ...flightUpdateData, status: e.target.value })}>
+                    <option>Scheduled</option>
+                    <option>Delayed</option>
+                    <option>Boarding</option>
+                    <option>In-Air</option>
+                    <option>Landed</option>
+                    <option>Cancelled</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Current Location</label>
+                  <input className="input" placeholder="e.g. Over Atlantic Ocean" value={flightUpdateData.location} onChange={(e) => setFlightUpdateData({ ...flightUpdateData, location: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Notes</label>
+                  <textarea className="input min-h-[100px]" placeholder="Additional details..." value={flightUpdateData.notes} onChange={(e) => setFlightUpdateData({ ...flightUpdateData, notes: e.target.value })} />
+                </div>
+                <div className="flex gap-4">
+                  <button type="button" onClick={() => setSelectedFlight(null)} className="btn-outline flex-1 py-4">Cancel</button>
+                  <button type="submit" className="btn-primary flex-1 py-4 text-lg">Update Flight</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {isAddingFlight && (
+          <div 
+            className="fixed inset-0 bg-brand-primary/60 backdrop-blur-md flex items-center justify-center z-[60] p-4"
+            onClick={() => setIsAddingFlight(false)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="card w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black text-brand-primary tracking-tight">Add New Flight</h3>
+                <button onClick={() => setIsAddingFlight(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+              </div>
+              <form onSubmit={handleAddFlight} className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 pb-4">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Airline</label>
+                    <input required className="input" placeholder="Xpress Airways" value={newFlight.airline} onChange={(e) => setNewFlight({ ...newFlight, airline: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Flight Number</label>
+                    <input required className="input" placeholder="XP-123" value={newFlight.flight_number} onChange={(e) => setNewFlight({ ...newFlight, flight_number: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Origin</label>
+                    <input required className="input" placeholder="New York (JFK)" value={newFlight.origin} onChange={(e) => setNewFlight({ ...newFlight, origin: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Destination</label>
+                    <input required className="input" placeholder="London (LHR)" value={newFlight.destination} onChange={(e) => setNewFlight({ ...newFlight, destination: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Departure Time</label>
+                    <input required type="datetime-local" className="input" value={newFlight.departure_time} onChange={(e) => setNewFlight({ ...newFlight, departure_time: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Arrival Time</label>
+                    <input required type="datetime-local" className="input" value={newFlight.arrival_time} onChange={(e) => setNewFlight({ ...newFlight, arrival_time: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Price ($)</label>
+                    <input required type="number" className="input" placeholder="599" value={newFlight.price} onChange={(e) => setNewFlight({ ...newFlight, price: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Seats</label>
+                    <input required type="number" className="input" placeholder="100" value={newFlight.available_seats} onChange={(e) => setNewFlight({ ...newFlight, available_seats: e.target.value })} />
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <button type="button" onClick={() => setIsAddingFlight(false)} className="btn-outline flex-1 py-4">Cancel</button>
+                  <button type="submit" className="btn-primary flex-1 py-4 text-lg">Add Flight</button>
+                </div>
               </form>
             </motion.div>
           </div>

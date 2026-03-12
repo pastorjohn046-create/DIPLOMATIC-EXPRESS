@@ -15,6 +15,7 @@ export const Navbar = ({ activeTab, setActiveTab, user }: NavbarProps) => {
   const navItems = [
     { id: "home", label: "Home" },
     { id: "tracking", label: "Track Shipment" },
+    { id: "flights", label: "Flights" },
     { id: "reviews", label: "Reviews" },
     { id: "support", label: "Support" },
   ];

@@ -37,3 +37,31 @@ export interface User {
   email: string;
   role: string;
 }
+
+export interface Flight {
+  id: number;
+  airline: string;
+  flight_number: string;
+  origin: string;
+  destination: string;
+  departure_time: string;
+  arrival_time: string;
+  price: number;
+  available_seats: number;
+}
+
+export interface FlightBooking {
+  id: number;
+  flight_id: number;
+  user_id: number;
+  passenger_name: string;
+  passport_number?: string;
+  status: string;
+  booking_date: string;
+  airline?: string;
+  flight_number?: string;
+  origin?: string;
+  destination?: string;
+  departure_time?: string;
+  price?: number;
+}

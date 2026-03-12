@@ -11,6 +11,7 @@ import { Reviews } from "./pages/Reviews";
 import { SplashScreen } from "./components/SplashScreen";
 import { Auth } from "./pages/Auth";
 import { ClientDashboard } from "./pages/ClientDashboard";
+import { Flights } from "./pages/Flights";
 
 import { User } from "./types";
 
@@ -47,6 +48,7 @@ export default function App() {
             {activeTab === "home" && <Home onSupportClick={() => setActiveTab("support")} />}
             {activeTab === "tracking" && <TrackingPortal user={user} setActiveTab={setActiveTab} />}
             {activeTab === "support" && <SupportPortal />}
+            {activeTab === "flights" && <Flights user={user} setActiveTab={setActiveTab} />}
             {activeTab === "reviews" && <Reviews />}
             {activeTab === "dashboard" && (
               user ? (

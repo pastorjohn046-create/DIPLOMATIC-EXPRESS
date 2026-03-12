@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User as UserIcon, Package, FileText, LogOut, ChevronRight, Clock, MapPin, Download } from "lucide-react";
+import { User as UserIcon, Package, FileText, LogOut, ChevronRight, Clock, MapPin, Download, Plane } from "lucide-react";
 import { motion } from "motion/react";
 import { User, Shipment } from "../types";
 
@@ -11,23 +11,32 @@ interface ClientDashboardProps {
 
 export const ClientDashboard = ({ user, onLogout, setActiveTab }: ClientDashboardProps) => {
   const [myShipments, setMyShipments] = useState<Shipment[]>([]);
+  const [myBookings, setMyBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyShipments();
+    fetchMyData();
   }, []);
 
-  const fetchMyShipments = async () => {
+  const fetchMyData = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/shipments");
-      if (res.ok) {
-        const allShipments: Shipment[] = await res.json();
-        // Filter shipments claimed by this user
-        const filtered = allShipments.filter(s => s.claimed_by === user.username);
-        setMyShipments(filtered);
+      const [shipRes, bookRes] = await Promise.all([
+        fetch("/api/shipments"),
+        fetch(`/api/my-bookings/${user.id}`)
+      ]);
+
+      if (shipRes.ok) {
+        const allShipments: Shipment[] = await shipRes.json();
+        setMyShipments(allShipments.filter(s => s.claimed_by === user.username));
+      }
+
+      if (bookRes.ok) {
+        const bookings = await bookRes.json();
+        setMyBookings(bookings);
       }
     } catch (err) {
-      console.error("Failed to fetch shipments:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
@@ -91,9 +100,10 @@ export const ClientDashboard = ({ user, onLogout, setActiveTab }: ClientDashboar
           </div>
         </div>
 
-        {/* My Shipments */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card min-h-[500px]">
+        {/* My Shipments & Bookings */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Shipments Section */}
+          <div className="card">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-black text-brand-primary tracking-tight flex items-center gap-2">
                 <Package size={24} className="text-brand-secondary" />
@@ -105,9 +115,8 @@ export const ClientDashboard = ({ user, onLogout, setActiveTab }: ClientDashboar
             </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <div className="flex flex-col items-center justify-center py-10 space-y-4">
                 <div className="w-10 h-10 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-400 font-bold">Loading your shipments...</p>
               </div>
             ) : myShipments.length > 0 ? (
               <div className="space-y-4">
@@ -149,21 +158,14 @@ export const ClientDashboard = ({ user, onLogout, setActiveTab }: ClientDashboar
                       </div>
                       <div className="flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-3 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
                         <button 
-                          onClick={() => {
-                            // We'll reuse the tracking logic by switching tabs and setting the ID
-                            setActiveTab("tracking");
-                            // We'd need a way to pass the ID, but for now we'll just go there
-                          }}
+                          onClick={() => setActiveTab("tracking")}
                           className="text-brand-secondary font-bold text-sm flex items-center gap-1 hover:underline"
                         >
                           View Details
                           <ChevronRight size={16} />
                         </button>
                         <button 
-                          onClick={() => {
-                            setActiveTab("tracking");
-                            // In a real app, we'd trigger the print directly
-                          }}
+                          onClick={() => setActiveTab("tracking")}
                           className="btn-outline py-2 px-4 text-xs flex items-center gap-2"
                         >
                           <Download size={14} />
@@ -175,20 +177,77 @@ export const ClientDashboard = ({ user, onLogout, setActiveTab }: ClientDashboar
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center">
-                  <Package size={40} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-slate-600 font-bold">No shipments claimed yet</p>
-                  <p className="text-slate-400 text-sm max-w-xs">Claim a shipment using your tracking ID to see it here in your dashboard.</p>
-                </div>
-                <button 
-                  onClick={() => setActiveTab("tracking")}
-                  className="btn-primary py-3 px-8"
-                >
-                  Track a Shipment
-                </button>
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+                <p className="text-slate-400 font-bold">No shipments claimed yet</p>
+                <button onClick={() => setActiveTab("tracking")} className="btn-primary py-2 px-6 text-xs">Track a Shipment</button>
+              </div>
+            )}
+          </div>
+
+          {/* Flight Bookings Section */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-brand-primary tracking-tight flex items-center gap-2">
+                <Plane size={24} className="text-brand-secondary" />
+                My Flight Bookings
+              </h3>
+              <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold">
+                {myBookings.length} Total
+              </span>
+            </div>
+
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                <div className="w-10 h-10 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : myBookings.length > 0 ? (
+              <div className="space-y-4">
+                {myBookings.map((booking) => (
+                  <motion.div 
+                    key={booking.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-brand-secondary transition-all group"
+                  >
+                    <div className="flex flex-col md:flex-row justify-between gap-6">
+                      <div className="space-y-4 flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-black text-brand-secondary uppercase tracking-widest bg-white px-3 py-1 rounded-lg border border-slate-200">
+                            {booking.flight_number}
+                          </span>
+                          <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-md text-[10px] font-black uppercase tracking-widest">
+                            {booking.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passenger</p>
+                            <p className="text-sm font-bold text-brand-primary">{booking.passenger_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Route</p>
+                            <p className="text-sm font-bold text-brand-primary">{booking.origin} → {booking.destination}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end gap-3 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Departure</p>
+                          <p className="text-sm font-bold text-brand-primary">{new Date(booking.departure_time).toLocaleDateString()}</p>
+                        </div>
+                        <button className="btn-outline py-2 px-4 text-xs flex items-center gap-2">
+                          <Download size={14} />
+                          E-Ticket
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+                <p className="text-slate-400 font-bold">No flight bookings yet</p>
+                <button onClick={() => setActiveTab("flights")} className="btn-primary py-2 px-6 text-xs">Search Flights</button>
               </div>
             )}
           </div>

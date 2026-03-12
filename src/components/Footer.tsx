@@ -53,7 +53,7 @@ export const Footer = () => {
             </li>
             <li className="flex items-center gap-3">
               <MapPin size={18} className="text-brand-secondary" />
-              <span>123 Logistics Way, Tech City</span>
+              <span>345 diplomatic xpress cambrige</span>
             </li>
           </ul>
         </div>

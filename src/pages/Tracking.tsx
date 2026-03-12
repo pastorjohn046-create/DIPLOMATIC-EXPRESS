@@ -10,7 +10,9 @@ interface TrackingPortalProps {
 
 export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
   const [trackingId, setTrackingId] = useState("");
+  const [trackingType, setTrackingType] = useState<"package" | "flight">("package");
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [flight, setFlight] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [claimStatus, setClaimStatus] = useState<{ success?: boolean; error?: string } | null>(null);
@@ -21,14 +23,21 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
     setLoading(true);
     setError("");
     setClaimStatus(null);
+    setShipment(null);
+    setFlight(null);
+
     try {
-      const res = await fetch(`/api/shipments/${trackingId}`);
+      const endpoint = trackingType === "package" ? `/api/shipments/${trackingId}` : `/api/flights/track/${trackingId}`;
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
-        setShipment(data);
+        if (trackingType === "package") {
+          setShipment(data);
+        } else {
+          setFlight(data);
+        }
       } else {
-        setError("Tracking ID not found. Please verify and try again.");
-        setShipment(null);
+        setError(`${trackingType === "package" ? "Tracking ID" : "Flight Number"} not found. Please verify and try again.`);
       }
     } catch (err) {
       setError("Connection error. Please try again.");
@@ -70,8 +79,27 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
   return (
     <div className="py-20 max-w-5xl mx-auto px-6 space-y-16">
       <div className="text-center space-y-4 md:space-y-6 max-w-2xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-black text-brand-primary tracking-tight">Track Your Package</h2>
-        <p className="text-base md:text-lg text-slate-500">Enter your tracking number below to see real-time status and visual proof of delivery.</p>
+        <h2 className="text-3xl md:text-5xl font-black text-brand-primary tracking-tight">Real-Time Tracking</h2>
+        <p className="text-base md:text-lg text-slate-500">Track your packages or monitor flight status in one place.</p>
+        
+        <div className="flex justify-center gap-4 pt-4">
+          <button 
+            onClick={() => { setTrackingType("package"); setShipment(null); setFlight(null); setError(""); }}
+            className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all ${
+              trackingType === "package" ? "bg-brand-secondary text-white shadow-lg" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+            }`}
+          >
+            Package
+          </button>
+          <button 
+            onClick={() => { setTrackingType("flight"); setShipment(null); setFlight(null); setError(""); }}
+            className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all ${
+              trackingType === "flight" ? "bg-brand-secondary text-white shadow-lg" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+            }`}
+          >
+            Flight
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleTrack} className="relative max-w-2xl mx-auto">
@@ -80,7 +108,7 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
           <div className="relative flex flex-col sm:flex-row gap-2">
             <input 
               className="w-full pl-6 pr-6 sm:pr-40 py-4 sm:py-6 rounded-2xl bg-white shadow-2xl border border-slate-100 text-xl sm:text-2xl font-bold focus:outline-none focus:ring-4 focus:ring-brand-secondary/10 transition-all"
-              placeholder="LOGI-XXXXX"
+              placeholder={trackingType === "package" ? "LOGI-XXXXX" : "XP-123"}
               value={trackingId}
               onChange={(e) => setTrackingId(e.target.value)}
             />
@@ -100,6 +128,110 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 text-red-500 justify-center font-bold bg-red-50 py-4 rounded-2xl border border-red-100 max-w-md mx-auto">
           <AlertCircle size={24} />
           {error}
+        </motion.div>
+      )}
+
+      {flight && (
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+          <div className="card grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Airline</span>
+              <p className="text-2xl font-black text-brand-primary">{flight.airline}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flight Number</span>
+              <p className="text-3xl font-black text-brand-secondary font-mono">{flight.flight_number}</p>
+            </div>
+            <div className="space-y-1 md:text-right">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Status</span>
+              <div className="flex md:justify-end">
+                <span className={`px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest ${
+                  flight.status === "Landed" ? "bg-emerald-100 text-emerald-700" : 
+                  flight.status === "In-Air" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-700"
+                }`}>
+                  {flight.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="space-y-4">
+              <h4 className="text-xl font-black text-brand-primary tracking-tight">Route Details</h4>
+              <div className="flex items-center gap-8">
+                <div className="text-center">
+                  <p className="text-3xl font-black text-brand-primary">{flight.origin.split('(')[1]?.replace(')', '') || flight.origin}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase">{flight.origin}</p>
+                </div>
+                <div className="flex-1 h-px bg-slate-200 relative">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2">
+                    <motion.div 
+                      animate={{ x: [0, 20, 0] }}
+                      transition={{ repeat: Infinity, duration: 3 }}
+                    >
+                      <CheckCircle2 size={16} className="text-brand-secondary" />
+                    </motion.div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-black text-brand-primary">{flight.destination.split('(')[1]?.replace(')', '') || flight.destination}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase">{flight.destination}</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="text-xl font-black text-brand-primary tracking-tight">Schedule</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Departure</p>
+                  <p className="text-sm font-bold text-brand-primary">{new Date(flight.departure_time).toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Arrival</p>
+                  <p className="text-sm font-bold text-brand-primary">{new Date(flight.arrival_time).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card space-y-10">
+            <h4 className="text-2xl font-black text-brand-primary tracking-tight flex items-center gap-3">
+              <Clock size={28} className="text-brand-secondary" />
+              Flight Updates
+            </h4>
+            <div className="space-y-10">
+              {flight.updates?.map((update: any, i: number) => (
+                <div key={i} className="flex gap-8 group">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-4 h-4 rounded-full border-4 border-white shadow-lg transition-colors duration-500 ${i === 0 ? "bg-brand-secondary scale-125" : "bg-slate-300"}`} />
+                    {i !== flight.updates!.length - 1 && <div className="w-1 flex-1 bg-slate-100 my-2 rounded-full" />}
+                  </div>
+                  <div className="flex-1 space-y-4 pb-10">
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-2">
+                      <div>
+                        <p className="text-xl font-black text-brand-primary">{update.status}</p>
+                        <p className="text-slate-500 font-medium flex items-center gap-2">
+                          <MapPin size={16} className="text-brand-secondary" />
+                          {update.location || "En route"}
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{new Date(update.timestamp).toLocaleString()}</span>
+                    </div>
+                    {update.notes && (
+                      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 text-slate-600 leading-relaxed italic">
+                        "{update.notes}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!flight.updates || flight.updates.length === 0) && (
+                <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                  <p className="text-slate-400 font-bold">No updates available yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
       )}
 

@@ -84,6 +84,42 @@ db.exec(`
     FOREIGN KEY (ticket_id) REFERENCES tickets(id)
   );
 
+  CREATE TABLE IF NOT EXISTS flights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    airline TEXT NOT NULL,
+    flight_number TEXT NOT NULL,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    departure_time DATETIME NOT NULL,
+    arrival_time DATETIME NOT NULL,
+    price REAL NOT NULL,
+    available_seats INTEGER DEFAULT 100,
+    status TEXT DEFAULT 'Scheduled',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS flight_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    flight_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    location TEXT,
+    notes TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (flight_id) REFERENCES flights(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS flight_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    flight_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    passenger_name TEXT NOT NULL,
+    passport_number TEXT,
+    status TEXT DEFAULT 'Confirmed',
+    booking_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (flight_id) REFERENCES flights(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -388,6 +424,126 @@ app.delete("/api/shipments/:id", (req, res) => {
   } catch (err: any) {
     console.error("Delete shipment error:", err);
     res.status(500).json({ error: "Failed to delete shipment", details: err.message });
+  }
+});
+
+// Flight API Routes
+app.get("/api/flights", (req, res) => {
+  const { origin, destination } = req.query;
+  let query = "SELECT * FROM flights WHERE 1=1";
+  const params: any[] = [];
+
+  if (origin) {
+    query += " AND origin LIKE ?";
+    params.push(`%${origin}%`);
+  }
+  if (destination) {
+    query += " AND destination LIKE ?";
+    params.push(`%${destination}%`);
+  }
+
+  query += " ORDER BY departure_time ASC";
+  const flights = db.prepare(query).all(...params);
+  res.json(flights);
+});
+
+app.get("/api/flights/track/:flightNumber", (req, res) => {
+  const flight = db.prepare("SELECT * FROM flights WHERE flight_number = ?").get(req.params.flightNumber) as any;
+  if (!flight) return res.status(404).json({ error: "Flight not found" });
+  
+  const updates = db.prepare("SELECT * FROM flight_updates WHERE flight_id = ? ORDER BY timestamp DESC").all(flight.id);
+  res.json({ ...flight, updates });
+});
+
+app.get("/api/flights/:id/updates", (req, res) => {
+  const updates = db.prepare("SELECT * FROM flight_updates WHERE flight_id = ? ORDER BY timestamp DESC").all(req.params.id);
+  res.json(updates);
+});
+
+app.post("/api/flights/:id/updates", (req, res) => {
+  const { status, location, notes, admin_user } = req.body;
+  if (!verifyAdmin(admin_user)) return res.status(403).json({ error: "Unauthorized" });
+
+  try {
+    db.transaction(() => {
+      db.prepare("INSERT INTO flight_updates (flight_id, status, location, notes) VALUES (?, ?, ?, ?)")
+        .run(req.params.id, status, location, notes);
+      db.prepare("UPDATE flights SET status = ? WHERE id = ?").run(status, req.params.id);
+      logAdminAction(admin_user, `Updated flight ${req.params.id} status to ${status}`);
+    })();
+    res.status(201).json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/flights", (req, res) => {
+  const { airline, flight_number, origin, destination, departure_time, arrival_time, price, available_seats, admin_user } = req.body;
+  
+  if (!verifyAdmin(admin_user)) {
+    return res.status(403).json({ error: "Unauthorized: Admin access required" });
+  }
+
+  try {
+    const result = db.prepare(`
+      INSERT INTO flights (airline, flight_number, origin, destination, departure_time, arrival_time, price, available_seats)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(airline, flight_number, origin, destination, departure_time, arrival_time, price, available_seats || 100);
+    
+    logAdminAction(admin_user, `Added flight ${flight_number} from ${origin} to ${destination}`);
+    res.status(201).json({ id: result.lastInsertRowid });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to add flight", details: err.message });
+  }
+});
+
+app.post("/api/flights/:id/book", (req, res) => {
+  const { user_id, passenger_name, passport_number } = req.body;
+  const flightId = req.params.id;
+
+  try {
+    db.transaction(() => {
+      const flight = db.prepare("SELECT available_seats FROM flights WHERE id = ?").get(flightId) as any;
+      if (!flight || flight.available_seats <= 0) {
+        throw new Error("Flight not available or fully booked");
+      }
+
+      db.prepare("INSERT INTO flight_bookings (flight_id, user_id, passenger_name, passport_number) VALUES (?, ?, ?, ?)")
+        .run(flightId, user_id, passenger_name, passport_number);
+      
+      db.prepare("UPDATE flights SET available_seats = available_seats - 1 WHERE id = ?").run(flightId);
+    })();
+    res.status(201).json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/my-bookings/:userId", (req, res) => {
+  const bookings = db.prepare(`
+    SELECT b.*, f.airline, f.flight_number, f.origin, f.destination, f.departure_time, f.price
+    FROM flight_bookings b
+    JOIN flights f ON b.flight_id = f.id
+    WHERE b.user_id = ?
+    ORDER BY b.booking_date DESC
+  `).all(req.params.userId);
+  res.json(bookings);
+});
+
+app.delete("/api/flights/:id", (req, res) => {
+  const { admin_user } = req.query;
+  if (!verifyAdmin(admin_user as string)) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  try {
+    db.transaction(() => {
+      db.prepare("DELETE FROM flight_bookings WHERE flight_id = ?").run(req.params.id);
+      db.prepare("DELETE FROM flights WHERE id = ?").run(req.params.id);
+    })();
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
