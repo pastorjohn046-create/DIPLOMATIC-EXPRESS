@@ -34,6 +34,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [showUsers, setShowUsers] = useState(false);
   const [showReceiptGen, setShowReceiptGen] = useState(false);
   const [receiptData, setReceiptData] = useState({
+    type: "package" as "package" | "flight",
     trackingId: "",
     deliveryDate: "",
     senderName: "",
@@ -49,7 +50,16 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     quantity: "1",
     action: "In Progress ♻️",
     shippingFee: "",
-    ownerPhotoUrl: ""
+    ownerPhotoUrl: "",
+    // Flight specific fields
+    flightNumber: "",
+    airline: "",
+    departureTime: "",
+    arrivalTime: "",
+    seatNumber: "",
+    gate: "",
+    class: "Economy",
+    destination: ""
   });
   const [newShipment, setNewShipment] = useState({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Warehouse" });
   const [clientPhoto, setClientPhoto] = useState<File | null>(null);
@@ -358,6 +368,36 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   };
 
+  const openReceiptGenWithShipment = (s: Shipment) => {
+    setReceiptData({
+      ...receiptData,
+      type: "package",
+      trackingId: s.id,
+      receiverName: s.customer_name,
+      origin: s.origin,
+      receiverAddress: s.destination,
+      action: s.status,
+      deliveryDate: new Date().toISOString().split('T')[0]
+    });
+    setShowReceiptGen(true);
+  };
+
+  const openReceiptGenWithFlight = (f: any) => {
+    setReceiptData({
+      ...receiptData,
+      type: "flight",
+      flightNumber: f.flight_number,
+      airline: f.airline,
+      origin: f.origin,
+      destination: f.destination,
+      departureTime: f.departure_time,
+      arrivalTime: f.arrival_time,
+      shippingFee: `$${f.price}`,
+      deliveryDate: new Date(f.departure_time).toISOString().split('T')[0]
+    });
+    setShowReceiptGen(true);
+  };
+
   return (
     <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 md:px-6 space-y-8 md:space-y-12">
       <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
@@ -469,6 +509,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                         </td>
                         <td className="py-5 text-right">
                           <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => openReceiptGenWithShipment(s)}
+                              className="text-brand-secondary font-bold text-sm hover:underline"
+                            >
+                              Receipt
+                            </button>
                             <button 
                               onClick={() => {
                                 fetchViewingShipment(s.id);
@@ -612,6 +658,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                         <td className="py-5 text-right">
                           <div className="flex justify-end gap-3">
                             <button 
+                              onClick={() => openReceiptGenWithFlight(f)}
+                              className="text-brand-secondary font-bold text-sm hover:underline"
+                            >
+                              Receipt
+                            </button>
+                            <button 
                               onClick={() => {
                                 fetchViewingFlight(f.id);
                                 setIsViewingFlight(true);
@@ -623,9 +675,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                             <button 
                               onClick={() => {
                                 setSelectedFlight(f);
-                                setFlightUpdateData({ status: f.status, location: "", notes: "" });
+                                setFlightUpdateData({ status: f.status, location: f.location || "", notes: "" });
                               }}
-                              className="text-brand-secondary font-bold text-sm hover:underline"
+                              className="text-brand-primary font-bold text-sm hover:underline"
                             >
                               Update
                             </button>
@@ -662,72 +714,164 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
             >
               <div className="flex justify-between items-center mb-8">
                 <h3 className="text-2xl font-black text-brand-primary tracking-tight">Receipt Generator</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => window.print()} className="btn-outline py-2 px-4 flex items-center gap-2">
-                    <Printer size={16} /> Print
-                  </button>
-                  <button onClick={() => setShowReceiptGen(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+                <div className="flex gap-4 items-center">
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button 
+                      onClick={() => setReceiptData({...receiptData, type: 'package'})}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${receiptData.type === 'package' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-400'}`}
+                    >
+                      Package
+                    </button>
+                    <button 
+                      onClick={() => setReceiptData({...receiptData, type: 'flight'})}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${receiptData.type === 'flight' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-400'}`}
+                    >
+                      Flight
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => window.print()} className="btn-outline py-2 px-4 flex items-center gap-2">
+                      <Printer size={16} /> Print
+                    </button>
+                    <button onClick={() => setShowReceiptGen(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                <div className="space-y-4">
-                  <h4 className="font-bold text-brand-primary border-b pb-2">Basic Info</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Tracking ID</label>
-                      <input className="input py-2" value={receiptData.trackingId} onChange={(e) => setReceiptData({...receiptData, trackingId: e.target.value})} />
+                {receiptData.type === 'package' ? (
+                  <>
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-brand-primary border-b pb-2">Basic Info</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Tracking ID</label>
+                          <input className="input py-2" value={receiptData.trackingId} onChange={(e) => setReceiptData({...receiptData, trackingId: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Delivery Date</label>
+                          <input type="date" className="input py-2" value={receiptData.deliveryDate} onChange={(e) => setReceiptData({...receiptData, deliveryDate: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Sender Name</label>
+                        <input className="input py-2" value={receiptData.senderName} onChange={(e) => setReceiptData({...receiptData, senderName: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Sender Address</label>
+                        <input className="input py-2" value={receiptData.senderAddress} onChange={(e) => setReceiptData({...receiptData, senderAddress: e.target.value})} />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Delivery Date</label>
-                      <input type="date" className="input py-2" value={receiptData.deliveryDate} onChange={(e) => setReceiptData({...receiptData, deliveryDate: e.target.value})} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Sender Name</label>
-                    <input className="input py-2" value={receiptData.senderName} onChange={(e) => setReceiptData({...receiptData, senderName: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Sender Address</label>
-                    <input className="input py-2" value={receiptData.senderAddress} onChange={(e) => setReceiptData({...receiptData, senderAddress: e.target.value})} />
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <h4 className="font-bold text-brand-primary border-b pb-2">Receiver Info</h4>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Name</label>
-                    <input className="input py-2" value={receiptData.receiverName} onChange={(e) => setReceiptData({...receiptData, receiverName: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Email</label>
-                    <input className="input py-2" value={receiptData.receiverEmail} onChange={(e) => setReceiptData({...receiptData, receiverEmail: e.target.value})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Receiver Address</label>
-                    <input className="input py-2" value={receiptData.receiverAddress} onChange={(e) => setReceiptData({...receiptData, receiverAddress: e.target.value})} />
-                  </div>
-                </div>
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-brand-primary border-b pb-2">Receiver Info</h4>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Receiver Name</label>
+                        <input className="input py-2" value={receiptData.receiverName} onChange={(e) => setReceiptData({...receiptData, receiverName: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Receiver Email</label>
+                        <input className="input py-2" value={receiptData.receiverEmail} onChange={(e) => setReceiptData({...receiptData, receiverEmail: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Receiver Address</label>
+                        <input className="input py-2" value={receiptData.receiverAddress} onChange={(e) => setReceiptData({...receiptData, receiverAddress: e.target.value})} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-brand-primary border-b pb-2">Flight Info</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Flight Number</label>
+                          <input className="input py-2" value={receiptData.flightNumber} onChange={(e) => setReceiptData({...receiptData, flightNumber: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Airline</label>
+                          <input className="input py-2" value={receiptData.airline} onChange={(e) => setReceiptData({...receiptData, airline: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Origin</label>
+                          <input className="input py-2" value={receiptData.origin} onChange={(e) => setReceiptData({...receiptData, origin: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Destination</label>
+                          <input className="input py-2" value={receiptData.destination} onChange={(e) => setReceiptData({...receiptData, destination: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-brand-primary border-b pb-2">Passenger & Schedule</h4>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Passenger Name</label>
+                        <input className="input py-2" value={receiptData.receiverName} onChange={(e) => setReceiptData({...receiptData, receiverName: e.target.value})} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Departure</label>
+                          <input type="datetime-local" className="input py-2" value={receiptData.departureTime} onChange={(e) => setReceiptData({...receiptData, departureTime: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Arrival</label>
+                          <input type="datetime-local" className="input py-2" value={receiptData.arrivalTime} onChange={(e) => setReceiptData({...receiptData, arrivalTime: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-4 md:col-span-2">
-                  <h4 className="font-bold text-brand-primary border-b pb-2">Consignment Details</h4>
+                  <h4 className="font-bold text-brand-primary border-b pb-2">{receiptData.type === 'package' ? 'Consignment' : 'Booking'} Details</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Origin</label>
-                      <input className="input py-2" value={receiptData.origin} onChange={(e) => setReceiptData({...receiptData, origin: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Content</label>
-                      <input className="input py-2" value={receiptData.content} onChange={(e) => setReceiptData({...receiptData, content: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Weight</label>
-                      <input className="input py-2" value={receiptData.weight} onChange={(e) => setReceiptData({...receiptData, weight: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Est. Delivery</label>
-                      <input className="input py-2" value={receiptData.estDelivery} onChange={(e) => setReceiptData({...receiptData, estDelivery: e.target.value})} />
-                    </div>
+                    {receiptData.type === 'package' ? (
+                      <>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Origin</label>
+                          <input className="input py-2" value={receiptData.origin} onChange={(e) => setReceiptData({...receiptData, origin: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Content</label>
+                          <input className="input py-2" value={receiptData.content} onChange={(e) => setReceiptData({...receiptData, content: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Weight</label>
+                          <input className="input py-2" value={receiptData.weight} onChange={(e) => setReceiptData({...receiptData, weight: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Est. Delivery</label>
+                          <input className="input py-2" value={receiptData.estDelivery} onChange={(e) => setReceiptData({...receiptData, estDelivery: e.target.value})} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Seat Number</label>
+                          <input className="input py-2" placeholder="12A" value={receiptData.seatNumber} onChange={(e) => setReceiptData({...receiptData, seatNumber: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Gate</label>
+                          <input className="input py-2" placeholder="B4" value={receiptData.gate} onChange={(e) => setReceiptData({...receiptData, gate: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Class</label>
+                          <select className="input py-2" value={receiptData.class} onChange={(e) => setReceiptData({...receiptData, class: e.target.value})}>
+                            <option>Economy</option>
+                            <option>Premium Economy</option>
+                            <option>Business</option>
+                            <option>First Class</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Booking Ref</label>
+                          <input className="input py-2" placeholder="BK-XXXX" value={receiptData.trackingId} onChange={(e) => setReceiptData({...receiptData, trackingId: e.target.value})} />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="space-y-1">
@@ -739,11 +883,11 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <input className="input py-2" value={receiptData.quantity} onChange={(e) => setReceiptData({...receiptData, quantity: e.target.value})} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Action</label>
+                      <label className="text-[10px] font-black uppercase text-slate-400">Action/Status</label>
                       <input className="input py-2" value={receiptData.action} onChange={(e) => setReceiptData({...receiptData, action: e.target.value})} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-slate-400">Shipping Fee</label>
+                      <label className="text-[10px] font-black uppercase text-slate-400">{receiptData.type === 'package' ? 'Shipping Fee' : 'Ticket Price'}</label>
                       <input className="input py-2" value={receiptData.shippingFee} onChange={(e) => setReceiptData({...receiptData, shippingFee: e.target.value})} />
                     </div>
                     <div className="space-y-1">
@@ -764,112 +908,243 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   }
                 `}} />
                 
-                {/* Header Section */}
-                <div className="flex justify-between items-start mb-12 border-b-4 border-brand-primary pb-8">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-brand-primary rounded-xl flex items-center justify-center">
-                        <Truck className="text-white" size={28} />
-                      </div>
-                      <div>
-                        <h1 className="text-2xl font-black text-brand-primary leading-tight uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span></h1>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Logistics & Courier</p>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Consignment Receipt</p>
-                      <p className="text-sm font-medium text-slate-500 italic">"Global reach, local touch."</p>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-2">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 inline-block">
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Tracking Number</p>
-                      <p className="text-xl font-black text-brand-primary font-mono">{receiptData.trackingId || "---"}</p>
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date: {receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
-                  </div>
-                </div>
-
-                {/* Address Grid */}
-                <div className="grid grid-cols-2 gap-16 mb-12">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <div className="w-2 h-2 rounded-full bg-brand-secondary" />
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Shipper Details</h3>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-lg font-black text-brand-primary">{receiptData.senderName || "---"}</p>
-                      <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.senderAddress || "---"}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Consignee Details</h3>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
-                      <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
-                      <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
-                      {receiptData.ownerPhotoUrl && (
-                        <div className="mt-4">
-                          <img 
-                            src={receiptData.ownerPhotoUrl} 
-                            alt="Owner" 
-                            className="w-24 h-24 rounded-xl object-cover border-2 border-slate-100 shadow-sm"
-                            referrerPolicy="no-referrer"
-                          />
+                {receiptData.type === 'package' ? (
+                  <>
+                    {/* Header Section */}
+                    <div className="flex justify-between items-start mb-12 border-b-4 border-brand-primary pb-8">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-brand-primary rounded-xl flex items-center justify-center">
+                            <Truck className="text-white" size={28} />
+                          </div>
+                          <div>
+                            <h1 className="text-2xl font-black text-brand-primary leading-tight uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span></h1>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Logistics & Courier</p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Main Content Table */}
-                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-12">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Description</th>
-                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Origin</th>
-                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weight</th>
-                        <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      <tr>
-                        <td className="px-6 py-8">
-                          <p className="font-black text-brand-primary mb-1">{receiptData.content || "General Cargo"}</p>
-                          <p className="text-xs text-slate-400 italic">Status: {receiptData.action || "In Transit"}</p>
-                        </td>
-                        <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.origin || "---"}</td>
-                        <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.weight || "---"}</td>
-                        <td className="px-6 py-8 text-right font-black text-brand-primary text-xl">{receiptData.quantity || "1"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="bg-slate-50/50 p-8 grid grid-cols-2 gap-8 border-t border-slate-200">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                          receiptData.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                        }`}>{receiptData.paymentStatus || "PENDING"}</span>
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Consignment Receipt</p>
+                          <p className="text-sm font-medium text-slate-500 italic">"Global reach, local touch."</p>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Delivery</span>
-                        <span className="text-sm font-black text-brand-primary">{receiptData.estDelivery || "---"}</span>
+                      <div className="text-right space-y-2">
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 inline-block">
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Tracking Number</p>
+                          <p className="text-xl font-black text-brand-primary font-mono">{receiptData.trackingId || "---"}</p>
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date: {receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col justify-center items-end space-y-2">
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Shipping Fee</p>
-                      <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.shippingFee || "---"}</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Footer Section */}
-                <div className="grid grid-cols-3 gap-8 items-end pt-8 border-t border-slate-100">
+                    {/* Address Grid */}
+                    <div className="grid grid-cols-2 gap-16 mb-12">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                          <div className="w-2 h-2 rounded-full bg-brand-secondary" />
+                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Shipper Details</h3>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-lg font-black text-brand-primary">{receiptData.senderName || "---"}</p>
+                          <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.senderAddress || "---"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Consignee Details</h3>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
+                          <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
+                          <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
+                          {receiptData.ownerPhotoUrl && (
+                            <div className="mt-4">
+                              <img 
+                                src={receiptData.ownerPhotoUrl} 
+                                alt="Owner" 
+                                className="w-24 h-24 rounded-xl object-cover border-2 border-slate-100 shadow-sm"
+                                referrerPolicy="no-referrer"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main Content Table */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden mb-12">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Description</th>
+                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Origin</th>
+                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weight</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          <tr>
+                            <td className="px-6 py-8">
+                              <p className="font-black text-brand-primary mb-1">{receiptData.content || "General Cargo"}</p>
+                              <p className="text-xs text-slate-400 italic">Status: {receiptData.action || "In Transit"}</p>
+                            </td>
+                            <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.origin || "---"}</td>
+                            <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.weight || "---"}</td>
+                            <td className="px-6 py-8 text-right font-black text-brand-primary text-xl">{receiptData.quantity || "1"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div className="bg-slate-50/50 p-8 grid grid-cols-2 gap-8 border-t border-slate-200">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              receiptData.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                            }`}>{receiptData.paymentStatus || "PENDING"}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Delivery</span>
+                            <span className="text-sm font-black text-brand-primary">{receiptData.estDelivery || "---"}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col justify-center items-end space-y-2">
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Shipping Fee</p>
+                          <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.shippingFee || "---"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Flight Ticket Design */}
+                    <div className="border-4 border-brand-primary rounded-3xl overflow-hidden bg-white shadow-xl">
+                      <div className="bg-brand-primary p-6 text-white flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <Plane size={32} className="text-brand-secondary" />
+                          <div>
+                            <h1 className="text-2xl font-black uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span> Airways</h1>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Boarding Pass & E-Ticket</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold uppercase opacity-60">Flight Number</p>
+                          <p className="text-2xl font-black tracking-tighter">{receiptData.flightNumber || "---"}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-8 grid grid-cols-3 gap-8 relative">
+                        {/* Perforation line */}
+                        <div className="absolute right-[30%] top-0 bottom-0 border-l-2 border-dashed border-slate-200" />
+                        
+                        <div className="col-span-2 space-y-8">
+                          <div className="flex justify-between items-center">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passenger Name</p>
+                              <p className="text-xl font-black text-brand-primary uppercase">{receiptData.receiverName || "---"}</p>
+                            </div>
+                            <div className="space-y-1 text-right">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</p>
+                              <p className="text-lg font-bold text-slate-600">{receiptData.deliveryDate || "---"}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <div className="text-center space-y-1">
+                              <p className="text-3xl font-black text-brand-primary">{receiptData.origin.split('(')[1]?.replace(')', '') || receiptData.origin.substring(0, 3).toUpperCase()}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{receiptData.origin}</p>
+                            </div>
+                            <div className="flex flex-col items-center gap-2 flex-1 px-8">
+                              <div className="w-full h-[2px] bg-slate-200 relative">
+                                <Plane size={16} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand-secondary" />
+                              </div>
+                              <p className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest">{receiptData.airline}</p>
+                            </div>
+                            <div className="text-center space-y-1">
+                              <p className="text-3xl font-black text-brand-primary">{receiptData.destination.split('(')[1]?.replace(')', '') || receiptData.destination.substring(0, 3).toUpperCase()}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{receiptData.destination}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gate</p>
+                              <p className="text-lg font-black text-brand-primary">{receiptData.gate || "TBA"}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Boarding</p>
+                              <p className="text-lg font-black text-brand-primary">{receiptData.departureTime ? new Date(receiptData.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "---"}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seat</p>
+                              <p className="text-lg font-black text-brand-primary">{receiptData.seatNumber || "---"}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class</p>
+                              <p className="text-lg font-black text-brand-primary">{receiptData.class}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pl-8 space-y-6">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passenger</p>
+                            <p className="text-sm font-black text-brand-primary uppercase truncate">{receiptData.receiverName || "---"}</p>
+                          </div>
+                          <div className="flex justify-between">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From</p>
+                              <p className="text-sm font-bold text-slate-600">{receiptData.origin.split('(')[1]?.replace(')', '') || receiptData.origin.substring(0, 3).toUpperCase()}</p>
+                            </div>
+                            <div className="space-y-1 text-right">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To</p>
+                              <p className="text-sm font-bold text-slate-600">{receiptData.destination.split('(')[1]?.replace(')', '') || receiptData.destination.substring(0, 3).toUpperCase()}</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flight</p>
+                              <p className="text-sm font-black text-brand-primary">{receiptData.flightNumber}</p>
+                            </div>
+                            <div className="space-y-1 text-right">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seat</p>
+                              <p className="text-sm font-black text-brand-primary">{receiptData.seatNumber || "---"}</p>
+                            </div>
+                          </div>
+                          <div className="pt-4 flex flex-col items-center gap-2">
+                             {receiptData.ownerPhotoUrl ? (
+                               <img src={receiptData.ownerPhotoUrl} className="w-20 h-20 rounded-lg object-cover border-2 border-slate-100" />
+                             ) : (
+                               <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
+                                 <UserIcon size={24} className="text-slate-300" />
+                               </div>
+                             )}
+                             <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">ID Verified</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-between items-center">
+                        <div className="flex gap-4">
+                          <div className="space-y-1">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Booking Ref</p>
+                            <p className="text-xs font-bold text-brand-primary">{receiptData.trackingId || "---"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Price</p>
+                            <p className="text-xs font-bold text-brand-primary">{receiptData.shippingFee || "---"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={14} className="text-emerald-500" />
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Valid for travel • Non-transferable</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Footer Section (Common) */}
+                <div className="grid grid-cols-3 gap-8 items-end pt-8 border-t border-slate-100 mt-8">
                   <div className="col-span-2 space-y-4">
                     <div className="flex gap-4">
                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
