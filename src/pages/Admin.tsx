@@ -51,6 +51,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     action: "In Progress ♻️",
     shippingFee: "",
     ownerPhotoUrl: "",
+    paymentMethods: [] as { name: string; details: string }[],
     // Flight specific fields
     flightNumber: "",
     airline: "",
@@ -75,6 +76,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [updateData, setUpdateData] = useState({ status: "Warehouse", location: "", notes: "" });
   const [flightUpdateData, setFlightUpdateData] = useState({ status: "Scheduled", location: "", notes: "" });
   const [photo, setPhoto] = useState<File | null>(null);
+  const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", details: "" });
 
   useEffect(() => {
     fetchShipments();
@@ -366,6 +368,22 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const addPaymentMethod = () => {
+    if (newPaymentMethod.name && newPaymentMethod.details) {
+      setReceiptData({
+        ...receiptData,
+        paymentMethods: [...receiptData.paymentMethods, newPaymentMethod]
+      });
+      setNewPaymentMethod({ name: "", details: "" });
+    }
+  };
+
+  const removePaymentMethod = (index: number) => {
+    const updated = [...receiptData.paymentMethods];
+    updated.splice(index, 1);
+    setReceiptData({ ...receiptData, paymentMethods: updated });
   };
 
   const openReceiptGenWithShipment = (s: Shipment) => {
@@ -895,6 +913,43 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <input type="file" className="input py-2 text-xs" accept="image/*" onChange={handleOwnerPhotoChange} />
                     </div>
                   </div>
+
+                  {receiptData.type === 'package' && (
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <h4 className="font-bold text-brand-primary flex items-center gap-2">
+                        <ShieldCheck size={18} className="text-brand-secondary" />
+                        Payment Methods (Customs Only)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Method Name</label>
+                          <input className="input py-2" placeholder="e.g. Bitcoin" value={newPaymentMethod.name} onChange={(e) => setNewPaymentMethod({...newPaymentMethod, name: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Details/Address</label>
+                          <input className="input py-2" placeholder="e.g. Wallet Address" value={newPaymentMethod.details} onChange={(e) => setNewPaymentMethod({...newPaymentMethod, details: e.target.value})} />
+                        </div>
+                        <div className="flex items-end">
+                          <button onClick={addPaymentMethod} className="btn-primary w-full py-2 flex items-center justify-center gap-2">
+                            <Plus size={16} /> Add
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {receiptData.paymentMethods.map((pm, idx) => (
+                          <div key={idx} className="bg-slate-100 px-3 py-2 rounded-xl flex items-center gap-3 border border-slate-200">
+                            <div className="text-xs">
+                              <p className="font-black text-brand-primary uppercase">{pm.name}</p>
+                              <p className="text-slate-500 font-mono truncate max-w-[150px]">{pm.details}</p>
+                            </div>
+                            <button onClick={() => removePaymentMethod(idx)} className="text-red-400 hover:text-red-600">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1013,6 +1068,40 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Payment Methods (Conditional) */}
+                    {receiptData.action.toLowerCase().includes('custom') && receiptData.paymentMethods.length > 0 && (
+                      <div className="mb-12 bg-amber-50/50 p-8 rounded-2xl border border-amber-100">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2">
+                          <ShieldCheck size={14} /> Required Payment Methods for Customs Clearance
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {receiptData.paymentMethods.map((pm, idx) => (
+                            <div key={idx} className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pm.name}</p>
+                              <p className="text-sm font-mono text-brand-primary break-all bg-white p-2 rounded-lg border border-amber-100">{pm.details}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Signature Section */}
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Authorized Signature</p>
+                        <div className="h-16 flex items-end">
+                          <p className="text-3xl font-signature text-brand-primary transform -rotate-2">Diplomatic Xpress Official</p>
+                        </div>
+                        <p className="text-xs font-bold text-brand-primary">Diplomatic Xpress Logistics</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Scan to Verify</p>
+                        <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
+                          <FileText size={32} className="text-slate-300" />
+                        </div>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -1119,6 +1208,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                                </div>
                              )}
                              <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">ID Verified</p>
+                             
+                             {/* Signature for Flight */}
+                             <div className="pt-2 border-t border-slate-100 w-full">
+                               <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Authorized Signature</p>
+                               <p className="text-lg font-signature text-brand-primary text-center leading-none">Diplomatic Xpress</p>
+                             </div>
                           </div>
                         </div>
                       </div>
