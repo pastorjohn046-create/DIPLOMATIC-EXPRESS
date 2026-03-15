@@ -1091,7 +1091,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <div className="space-y-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Authorized Signature</p>
                         <div className="h-16 flex items-end">
-                          <p className="text-3xl font-signature text-brand-primary transform -rotate-2">Diplomatic Xpress Official</p>
+                          <p className="text-3xl font-signature text-brand-primary transform -rotate-2">Diplomatic Xpress</p>
                         </div>
                         <p className="text-xs font-bold text-brand-primary">Diplomatic Xpress Logistics</p>
                       </div>
@@ -1252,8 +1252,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     </div>
                   </div>
                   <div className="text-right space-y-4">
-                    <div className="inline-block border-b-2 border-slate-200 px-8 pb-2">
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-8">Authorized Signature</p>
+                    <div className="inline-block border-b-2 border-slate-200 px-8 pb-2 relative">
+                      <p className="text-2xl font-signature text-brand-primary absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap transform -rotate-2">Diplomatic Xpress</p>
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-4">Authorized Signature</p>
                     </div>
                     <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Logistics Operations Dept.</p>
                   </div>
