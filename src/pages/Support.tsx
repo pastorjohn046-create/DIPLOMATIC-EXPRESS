@@ -8,6 +8,11 @@ export const SupportPortal = () => {
   const [submitted, setSubmitted] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const selectedTicketRef = React.useRef<Ticket | null>(null);
+
+  useEffect(() => {
+    selectedTicketRef.current = selectedTicket;
+  }, [selectedTicket]);
   const [replies, setReplies] = useState<any[]>([]);
   const [newReply, setNewReply] = useState("");
 
@@ -34,8 +39,11 @@ export const SupportPortal = () => {
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "TICKET_REPLY") {
-        if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
-          setReplies(prev => [...prev, message.data]);
+        if (selectedTicketRef.current && selectedTicketRef.current.id === Number(message.data.ticket_id)) {
+          setReplies(prev => {
+            if (prev.some(r => r.id === message.data.id)) return prev;
+            return [...prev, message.data];
+          });
         }
       }
     };

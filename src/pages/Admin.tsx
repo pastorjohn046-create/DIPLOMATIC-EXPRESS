@@ -28,6 +28,11 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     available_seats: "100"
   });
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const selectedTicketRef = React.useRef<Ticket | null>(null);
+  
+  useEffect(() => {
+    selectedTicketRef.current = selectedTicket;
+  }, [selectedTicket]);
   const [replies, setReplies] = useState<any[]>([]);
   const [newReply, setNewReply] = useState("");
   const [showLogs, setShowLogs] = useState(false);
@@ -73,7 +78,13 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [viewingFlightData, setViewingFlightData] = useState<any>(null);
   const [isEditingShipment, setIsEditingShipment] = useState(false);
   const [editShipmentData, setEditShipmentData] = useState({ customer_name: "", client_phone: "", origin: "", destination: "" });
-  const [updateData, setUpdateData] = useState({ status: "Warehouse", location: "", notes: "" });
+  const [updateData, setUpdateData] = useState({ 
+    status: "Warehouse", 
+    location: "", 
+    notes: "",
+    paymentMethods: [] as { name: string, details: string }[]
+  });
+  const [newUpdatePaymentMethod, setNewUpdatePaymentMethod] = useState({ name: "", details: "" });
   const [flightUpdateData, setFlightUpdateData] = useState({ status: "Scheduled", location: "", notes: "" });
   const [photo, setPhoto] = useState<File | null>(null);
   const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", details: "" });
@@ -95,7 +106,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       } else if (message.type === "TICKET_REPLY") {
         setReplies(prev => {
           // Only add if it's for the currently selected ticket and not already there
-          if (selectedTicket && selectedTicket.id === Number(message.data.ticket_id)) {
+          if (selectedTicketRef.current && selectedTicketRef.current.id === Number(message.data.ticket_id)) {
+            // Check if already exists to avoid duplicates (since handleReply also fetches)
+            if (prev.some(r => r.id === message.data.id)) return prev;
             return [...prev, message.data];
           }
           return prev;
@@ -272,6 +285,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     formData.append("location", updateData.location);
     formData.append("notes", updateData.notes);
     formData.append("admin_user", user.username);
+    if (updateData.paymentMethods.length > 0) {
+      formData.append("payment_methods", JSON.stringify(updateData.paymentMethods));
+    }
     if (photo) formData.append("photo", photo);
 
     const res = await fetch(`/api/shipments/${selectedShipment.id}/updates`, {
@@ -281,7 +297,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
     if (res.ok) {
       setSelectedShipment(null);
-      setUpdateData({ status: "Warehouse", location: "", notes: "" });
+      setUpdateData({ status: "Warehouse", location: "", notes: "", paymentMethods: [] });
       setPhoto(null);
       fetchShipments();
       fetchLogs();
@@ -558,7 +574,15 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                               Edit
                             </button>
                             <button 
-                              onClick={() => setSelectedShipment(s)}
+                              onClick={() => {
+                                setSelectedShipment(s);
+                                setUpdateData({
+                                  status: s.status,
+                                  location: "",
+                                  notes: "",
+                                  paymentMethods: s.payment_methods ? JSON.parse(s.payment_methods) : []
+                                });
+                              }}
                               className="text-brand-secondary font-bold text-sm hover:underline"
                             >
                               Update Status
@@ -1094,12 +1118,6 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                           <p className="text-3xl font-signature text-brand-primary transform -rotate-2">Diplomatic Xpress</p>
                         </div>
                         <p className="text-xs font-bold text-brand-primary">Diplomatic Xpress Logistics</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Scan to Verify</p>
-                        <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
-                          <FileText size={32} className="text-slate-300" />
-                        </div>
                       </div>
                     </div>
                   </>
@@ -1742,12 +1760,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Initial Status</label>
                   <select className="input" value={newShipment.status} onChange={(e) => setNewShipment({ ...newShipment, status: e.target.value })}>
                     <option>Warehouse</option>
+                    <option>Shipping</option>
                     <option>Courier 1</option>
                     <option>Courier 2</option>
                     <option>Courier 3</option>
-                    <option>Shipped</option>
                     <option>In Transit</option>
-                    <option>Custom Clearance</option>
+                    <option>Customs</option>
                     <option>Out for Delivery</option>
                     <option>Delivered</option>
                   </select>
@@ -1795,12 +1813,12 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Status</label>
                   <select className="input" value={updateData.status} onChange={(e) => setUpdateData({ ...updateData, status: e.target.value })}>
                     <option>Warehouse</option>
+                    <option>Shipping</option>
                     <option>Courier 1</option>
                     <option>Courier 2</option>
                     <option>Courier 3</option>
-                    <option>Shipped</option>
                     <option>In Transit</option>
-                    <option>Custom Clearance</option>
+                    <option>Customs</option>
                     <option>Out for Delivery</option>
                     <option>Delivered</option>
                   </select>
@@ -1813,6 +1831,62 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Notes</label>
                   <textarea className="input h-24" placeholder="Update details..." value={updateData.notes} onChange={(e) => setUpdateData({ ...updateData, notes: e.target.value })} />
                 </div>
+
+                {updateData.status === "Customs" && (
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h4 className="text-sm font-black text-brand-primary flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-brand-secondary" />
+                      Payment Methods for Customs
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input 
+                        className="input py-2 text-xs" 
+                        placeholder="Method (e.g. Bitcoin)" 
+                        value={newUpdatePaymentMethod.name}
+                        onChange={(e) => setNewUpdatePaymentMethod({...newUpdatePaymentMethod, name: e.target.value})}
+                      />
+                      <input 
+                        className="input py-2 text-xs" 
+                        placeholder="Details/Address" 
+                        value={newUpdatePaymentMethod.details}
+                        onChange={(e) => setNewUpdatePaymentMethod({...newUpdatePaymentMethod, details: e.target.value})}
+                      />
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (newUpdatePaymentMethod.name && newUpdatePaymentMethod.details) {
+                          setUpdateData({
+                            ...updateData,
+                            paymentMethods: [...updateData.paymentMethods, newUpdatePaymentMethod]
+                          });
+                          setNewUpdatePaymentMethod({ name: "", details: "" });
+                        }
+                      }}
+                      className="btn-primary w-full py-2 text-xs"
+                    >
+                      Add Payment Method
+                    </button>
+                    <div className="space-y-2">
+                      {updateData.paymentMethods.map((pm, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                          <span className="font-bold">{pm.name}: <span className="font-mono text-slate-500">{pm.details}</span></span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newMethods = [...updateData.paymentMethods];
+                              newMethods.splice(idx, 1);
+                              setUpdateData({ ...updateData, paymentMethods: newMethods });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Proof Photo</label>
                   <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200 rounded-2xl p-8 cursor-pointer hover:border-brand-secondary transition-all bg-slate-50/50">

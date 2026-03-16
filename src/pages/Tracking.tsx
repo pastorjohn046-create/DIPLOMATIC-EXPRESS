@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck, MessageSquare } from "lucide-react";
+import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck, MessageSquare, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import { Shipment, User } from "../types";
 
@@ -72,7 +72,7 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
   };
 
   const getStatusStep = (status: string) => {
-    const steps = ["Warehouse", "Shipping", "Courier 1", "Courier 2", "Courier 3", "In Transit", "Custom Clearance", "Out for Delivery", "Delivered"];
+    const steps = ["Warehouse", "Shipping", "Courier 1", "Courier 2", "Courier 3", "In Transit", "Customs", "Out for Delivery", "Delivered"];
     return steps.indexOf(status);
   };
 
@@ -293,6 +293,40 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
                   <img key={i} src={photo} alt={`Product ${i+1}`} className="w-32 h-32 rounded-xl object-cover border border-slate-200 shadow-md hover:scale-105 transition-transform cursor-pointer" referrerPolicy="no-referrer" />
                 ))}
               </div>
+            </div>
+          )}
+
+          {shipment.status === "Customs" && shipment.payment_methods && (
+            <div className="card bg-indigo-50 border-indigo-100 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                  <ShieldCheck size={24} />
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-indigo-900 tracking-tight">Customs Clearance Required</h4>
+                  <p className="text-indigo-600 font-bold text-sm uppercase tracking-widest">Payment Methods for Processing</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {JSON.parse(shipment.payment_methods).map((pm: any, idx: number) => (
+                  <div key={idx} className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm flex justify-between items-center group hover:border-indigo-300 transition-all">
+                    <div>
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">{pm.name}</p>
+                      <p className="font-mono font-bold text-indigo-900 break-all">{pm.details}</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(pm.details);
+                        alert("Address copied to clipboard!");
+                      }}
+                      className="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all"
+                    >
+                      <Download size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-indigo-500 italic">Please complete payment to one of the addresses above to proceed with customs clearance. Once paid, notify your agent.</p>
             </div>
           )}
 

@@ -6,6 +6,7 @@ export interface Shipment {
   origin: string;
   destination: string;
   status: string;
+  payment_methods?: string;
   created_at: string;
   claimed_by: string | null;
   updates?: ShipmentUpdate[];

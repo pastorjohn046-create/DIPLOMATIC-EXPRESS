@@ -45,6 +45,7 @@ db.exec(`
     destination TEXT NOT NULL,
     status TEXT DEFAULT 'Pending',
     claimed_by TEXT,
+    payment_methods TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -140,7 +141,7 @@ db.exec(`
 const migrate = () => {
   const tables = {
     users: ['role'],
-    shipments: ['client_phone', 'client_photo_url', 'claimed_by']
+    shipments: ['client_phone', 'client_photo_url', 'claimed_by', 'payment_methods']
   };
 
   for (const [table, columns] of Object.entries(tables)) {
@@ -331,7 +332,7 @@ app.put("/api/shipments/:id", (req, res) => {
 });
 
 app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
-  const { status, location, notes, admin_user } = req.body;
+  const { status, location, notes, admin_user, payment_methods } = req.body;
   
   if (!verifyAdmin(admin_user)) {
     return res.status(403).json({ error: "Unauthorized: Admin access required" });
@@ -342,7 +343,11 @@ app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
   db.prepare("INSERT INTO shipment_updates (shipment_id, status, location, photo_url, notes) VALUES (?, ?, ?, ?, ?)")
     .run(req.params.id, status, location, photo_url, notes);
   
-  db.prepare("UPDATE shipments SET status = ? WHERE id = ?").run(status, req.params.id);
+  if (payment_methods) {
+    db.prepare("UPDATE shipments SET status = ?, payment_methods = ? WHERE id = ?").run(status, payment_methods, req.params.id);
+  } else {
+    db.prepare("UPDATE shipments SET status = ? WHERE id = ?").run(status, req.params.id);
+  }
   
   if (admin_user) logAdminAction(admin_user, `Updated shipment ${req.params.id} to ${status}`);
 
@@ -380,12 +385,12 @@ app.get("/api/tickets/:id/replies", (req, res) => {
 
 app.post("/api/tickets/:id/replies", (req, res) => {
   const { sender_username, message } = req.body;
-  db.prepare("INSERT INTO ticket_replies (ticket_id, sender_username, message) VALUES (?, ?, ?)")
+  const result = db.prepare("INSERT INTO ticket_replies (ticket_id, sender_username, message) VALUES (?, ?, ?)")
     .run(req.params.id, sender_username, message);
   
   broadcastUpdate({ 
     type: "TICKET_REPLY", 
-    data: { ticket_id: req.params.id, sender_username, message, timestamp: new Date() } 
+    data: { id: result.lastInsertRowid, ticket_id: req.params.id, sender_username, message, timestamp: new Date() } 
   });
   
   res.status(201).json({ success: true });
