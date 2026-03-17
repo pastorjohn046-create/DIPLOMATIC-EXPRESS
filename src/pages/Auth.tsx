@@ -13,10 +13,12 @@ export const Auth = ({ onLogin }: AuthProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
     try {
       const res = await fetch(endpoint, {
@@ -29,12 +31,8 @@ export const Auth = ({ onLogin }: AuthProps) => {
       if (contentType && contentType.includes("application/json")) {
         const data = await res.json();
         if (res.ok) {
-          if (isLogin) {
-            onLogin(data);
-          } else {
-            setIsLogin(true);
-            setError("Account created! Please login.");
-          }
+          // Auto-login for both login and signup
+          onLogin(data);
         } else {
           setError(data.error || "An error occurred");
         }
@@ -46,6 +44,8 @@ export const Auth = ({ onLogin }: AuthProps) => {
     } catch (err) {
       console.error("Auth error:", err);
       setError(`Connection error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -126,9 +126,19 @@ export const Auth = ({ onLogin }: AuthProps) => {
               />
             </div>
           </div>
-          <button type="submit" className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
-            {isLogin ? "Login" : "Sign Up"}
-            <ArrowRight size={20} />
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                {isLogin ? "Login" : "Sign Up"}
+                <ArrowRight size={20} />
+              </>
+            )}
           </button>
         </form>
 

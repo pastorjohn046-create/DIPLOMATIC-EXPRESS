@@ -129,6 +129,9 @@ db.exec(`
     role TEXT DEFAULT 'user'
   );
 
+  CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+  CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
   CREATE TABLE IF NOT EXISTS admin_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL,
@@ -172,8 +175,11 @@ app.post("/api/auth/signup", (req, res) => {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)").run(username, email, password, role || 'user');
-    res.status(201).json({ message: "User created" });
+    const result = db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)").run(username, email, password, role || 'user');
+    
+    // Auto-login after signup for efficiency
+    const newUser = db.prepare("SELECT id, username, email, role FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
+    res.status(201).json(newUser);
   } catch (err: any) {
     console.error("Signup error:", err);
     if (err.code === 'SQLITE_CONSTRAINT') {
