@@ -29,13 +29,45 @@ let db: Database.Database;
 try {
   const dbPath = path.resolve("logistics.db");
   db = new Database(dbPath);
+  
+  // Enable WAL mode for better persistence and concurrency
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+  db.pragma('foreign_keys = ON');
+  
   console.log(`Database initialized successfully at ${dbPath}`);
 } catch (err) {
   console.error("Failed to initialize database:", err);
   process.exit(1);
 }
 
+// Ensure database is closed properly on exit
+const closeDb = () => {
+  if (db) {
+    db.close();
+    console.log("Database connection closed.");
+  }
+};
+
+process.on('SIGINT', () => {
+  closeDb();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  closeDb();
+  process.exit(0);
+});
+
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'user'
+  );
+
   CREATE TABLE IF NOT EXISTS shipments (
     id TEXT PRIMARY KEY,
     customer_name TEXT NOT NULL,
@@ -121,14 +153,6 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE,
-    password TEXT NOT NULL,
-    role TEXT DEFAULT 'user'
-  );
-
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
@@ -143,7 +167,7 @@ db.exec(`
 // Migration: Ensure columns exist (SQLite doesn't support ADD COLUMN IF NOT EXISTS easily)
 const migrate = () => {
   const tables = {
-    users: ['role'],
+    users: ['role', 'email'],
     shipments: ['client_phone', 'client_photo_url', 'claimed_by', 'payment_methods']
   };
 
@@ -168,14 +192,15 @@ migrate();
 // Auth endpoints
 app.post("/api/auth/signup", (req, res) => {
   try {
-    console.log("Signup request:", req.body);
     const { username, email, password, role } = req.body;
+    console.log(`Signup attempt for username: ${username}, email: ${email}`);
     
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
     const result = db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)").run(username, email, password, role || 'user');
+    console.log(`User created with ID: ${result.lastInsertRowid}`);
     
     // Auto-login after signup for efficiency
     const newUser = db.prepare("SELECT id, username, email, role FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
@@ -191,17 +216,19 @@ app.post("/api/auth/signup", (req, res) => {
 
 app.post("/api/auth/login", (req, res) => {
   try {
-    console.log("Login request:", req.body);
     const { username, password } = req.body;
+    console.log(`Login attempt for username/email: ${username}`);
     
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    const user = db.prepare("SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?").get(username, username, password);
+    const user = db.prepare("SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?").get(username, username, password) as any;
     if (user) {
+      console.log(`Login successful for user: ${user.username} (ID: ${user.id})`);
       res.json({ id: user.id, username: user.username, email: user.email, role: user.role });
     } else {
+      console.log(`Login failed for username/email: ${username} - Invalid credentials`);
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (err: any) {

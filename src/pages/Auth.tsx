@@ -96,7 +96,7 @@ export const Auth = ({ onLogin }: AuthProps) => {
             </div>
           )}
           <div className="space-y-3">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Username</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400">{isLogin ? "Username or Email" : "Username"}</label>
             <div className="relative group">
               <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3 border-r border-slate-200 pr-3">
                 <UserIcon className="text-slate-400 group-focus-within:text-brand-secondary transition-colors" size={20} />
@@ -104,7 +104,7 @@ export const Auth = ({ onLogin }: AuthProps) => {
               <input
                 required
                 className="input pl-16"
-                placeholder="username"
+                placeholder={isLogin ? "username or email" : "username"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />

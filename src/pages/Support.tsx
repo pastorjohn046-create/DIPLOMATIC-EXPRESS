@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare, CheckCircle2, Mail, Phone, MapPin, Clock, ShieldCheck, X } from "lucide-react";
+import { MessageSquare, CheckCircle2, Mail, Phone, MapPin, Clock, ShieldCheck, X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Ticket } from "../types";
 
@@ -158,6 +158,7 @@ export const SupportPortal = () => {
               {[
                 { icon: Mail, label: "Email Us", val: "info@diplomatic-xpress.com", color: "text-blue-500" },
                 { icon: Phone, label: "Call Us", val: "+1 (800) DIPLOMATIC-X", color: "text-emerald-500" },
+                { icon: Send, label: "Telegram", val: "t.me/DiplomaticXpressLogistics", color: "text-sky-500", link: "https://t.me/DiplomaticXpressLogistics" },
                 { icon: MapPin, label: "Visit Us", val: "345 diplomatic xpress cambrige", color: "text-brand-secondary" }
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4">
@@ -166,7 +167,13 @@ export const SupportPortal = () => {
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400">{item.label}</p>
-                    <p className="font-bold text-brand-primary">{item.val}</p>
+                    {item.link ? (
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-bold text-brand-primary hover:text-brand-secondary transition-colors">
+                        {item.val}
+                      </a>
+                    ) : (
+                      <p className="font-bold text-brand-primary">{item.val}</p>
+                    )}
                   </div>
                 </div>
               ))}

@@ -18,7 +18,18 @@ import { User } from "./types";
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [showSplash, setShowSplash] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem("logistics_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("logistics_user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("logistics_user");
+    }
+  }, [user]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3000);
@@ -50,7 +61,7 @@ export default function App() {
             {activeTab === "support" && <SupportPortal />}
             {activeTab === "flights" && <Flights user={user} setActiveTab={setActiveTab} />}
             {activeTab === "reviews" && <Reviews />}
-            {activeTab === "dashboard" && (
+            {(activeTab === "dashboard" || activeTab === "auth") && (
               user ? (
                 user.role === 'admin' ? (
                   <AdminDashboard user={user} onLogout={() => setUser(null)} />
@@ -58,7 +69,7 @@ export default function App() {
                   <ClientDashboard user={user} onLogout={() => setUser(null)} setActiveTab={setActiveTab} />
                 )
               ) : (
-                <Auth onLogin={(u) => setUser(u)} />
+                <Auth onLogin={(u) => { setUser(u); setActiveTab("dashboard"); }} />
               )
             )}
           </motion.div>

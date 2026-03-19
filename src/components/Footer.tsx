@@ -1,5 +1,5 @@
 import React from "react";
-import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin, Send } from "lucide-react";
 import { Logo } from "./Logo";
 
 export const Footer = () => {
@@ -12,9 +12,15 @@ export const Footer = () => {
             Diplomatic Xpress Logistics is on the mission of reducing freight management inefficiencies and providing maximum cost savings for our clients.
           </p>
           <div className="flex gap-4">
-            {[Facebook, Twitter, Linkedin, Instagram].map((Icon, i) => (
-              <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-secondary transition-colors">
-                <Icon size={18} />
+            {[
+              { Icon: Facebook, link: "#" },
+              { Icon: Twitter, link: "#" },
+              { Icon: Linkedin, link: "#" },
+              { Icon: Instagram, link: "#" },
+              { Icon: Send, link: "https://t.me/DiplomaticXpressLogistics" }
+            ].map((item, i) => (
+              <a key={i} href={item.link} target={item.link.startsWith('http') ? "_blank" : undefined} rel={item.link.startsWith('http') ? "noopener noreferrer" : undefined} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-secondary transition-colors">
+                <item.Icon size={18} />
               </a>
             ))}
           </div>
@@ -50,6 +56,10 @@ export const Footer = () => {
             <li className="flex items-center gap-3">
               <Phone size={18} className="text-brand-secondary" />
               <span>+1 (800) DIPLOMATIC-X</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <Send size={18} className="text-brand-secondary" />
+              <a href="https://t.me/DiplomaticXpressLogistics" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Telegram Support</a>
             </li>
             <li className="flex items-center gap-3">
               <MapPin size={18} className="text-brand-secondary" />
