@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck, MapPin, ChevronRight, Plane, Plus, Trash2 } from "lucide-react";
+import { Package, Truck, MessageSquare, X, Camera, LogOut, History, User as UserIcon, FileText, Download, Printer, ShieldCheck, MapPin, ChevronRight, Plane, Plus, Trash2, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shipment, Ticket, User, Flight } from "../types";
 
@@ -978,7 +978,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               </div>
 
               {/* Receipt Preview (Printable) */}
-              <div id="printable-receipt" className="bg-white p-12 border border-slate-200 rounded-lg shadow-sm font-sans text-slate-800">
+              <div id="printable-receipt" className="bg-white p-12 border border-slate-200 rounded-lg shadow-sm font-sans text-slate-800 relative overflow-hidden">
                 <style dangerouslySetInnerHTML={{ __html: `
                   @media print {
                     body * { visibility: hidden; }
@@ -987,300 +987,248 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                   }
                 `}} />
                 
-                {receiptData.type === 'package' ? (
-                  <>
-                    {/* Header Section */}
-                    <div className="flex justify-between items-start mb-12 border-b-4 border-brand-primary pb-8">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-brand-primary rounded-xl flex items-center justify-center">
+                <div>
+                  {receiptData.type === 'package' ? (
+                    <>
+                      {/* Header Section - Blue Header */}
+                      <div className="bg-brand-primary p-8 text-white rounded-t-2xl flex justify-between items-center mb-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
                             <Truck className="text-white" size={28} />
                           </div>
                           <div>
-                            <h1 className="text-2xl font-black text-brand-primary leading-tight uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span></h1>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Logistics & Courier</p>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Consignment Receipt</p>
-                          <p className="text-sm font-medium text-slate-500 italic">"Global reach, local touch."</p>
-                        </div>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 inline-block">
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Tracking Number</p>
-                          <p className="text-xl font-black text-brand-primary font-mono">{receiptData.trackingId || "---"}</p>
-                        </div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date: {receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
-                      </div>
-                    </div>
-
-                    {/* Address Grid */}
-                    <div className="grid grid-cols-2 gap-16 mb-12">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                          <div className="w-2 h-2 rounded-full bg-brand-secondary" />
-                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Shipper Details</h3>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-lg font-black text-brand-primary">{receiptData.senderName || "---"}</p>
-                          <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.senderAddress || "---"}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Consignee Details</h3>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
-                          <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
-                          <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
-                          {receiptData.ownerPhotoUrl && (
-                            <div className="mt-4">
-                              <img 
-                                src={receiptData.ownerPhotoUrl} 
-                                alt="Owner" 
-                                className="w-24 h-24 rounded-xl object-cover border-2 border-slate-100 shadow-sm"
-                                referrerPolicy="no-referrer"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Main Content Table */}
-                    <div className="border border-slate-200 rounded-2xl overflow-hidden mb-12">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Description</th>
-                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Origin</th>
-                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weight</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          <tr>
-                            <td className="px-6 py-8">
-                              <p className="font-black text-brand-primary mb-1">{receiptData.content || "General Cargo"}</p>
-                              <p className="text-xs text-slate-400 italic">Status: {receiptData.action || "In Transit"}</p>
-                            </td>
-                            <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.origin || "---"}</td>
-                            <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.weight || "---"}</td>
-                            <td className="px-6 py-8 text-right font-black text-brand-primary text-xl">{receiptData.quantity || "1"}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div className="bg-slate-50/50 p-8 grid grid-cols-2 gap-8 border-t border-slate-200">
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                              receiptData.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                            }`}>{receiptData.paymentStatus || "PENDING"}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Delivery</span>
-                            <span className="text-sm font-black text-brand-primary">{receiptData.estDelivery || "---"}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col justify-center items-end space-y-2">
-                          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Shipping Fee</p>
-                          <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.shippingFee || "---"}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Methods (Conditional) */}
-                    {receiptData.action.toLowerCase().includes('custom') && receiptData.paymentMethods.length > 0 && (
-                      <div className="mb-12 bg-amber-50/50 p-8 rounded-2xl border border-amber-100">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2">
-                          <ShieldCheck size={14} /> Required Payment Methods for Customs Clearance
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {receiptData.paymentMethods.map((pm, idx) => (
-                            <div key={idx} className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pm.name}</p>
-                              <p className="text-sm font-mono text-brand-primary break-all bg-white p-2 rounded-lg border border-amber-100">{pm.details}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Signature Section */}
-                    <div className="flex justify-between items-end">
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Authorized Signature</p>
-                        <div className="h-16 flex items-end">
-                          <p className="text-3xl font-signature text-brand-primary transform -rotate-2">Diplomatic Xpress</p>
-                        </div>
-                        <p className="text-xs font-bold text-brand-primary">Diplomatic Xpress Logistics</p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Flight Ticket Design */}
-                    <div className="border-4 border-brand-primary rounded-3xl overflow-hidden bg-white shadow-xl">
-                      <div className="bg-brand-primary p-6 text-white flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <Plane size={32} className="text-brand-secondary" />
-                          <div>
-                            <h1 className="text-2xl font-black uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span> Airways</h1>
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Boarding Pass & E-Ticket</p>
+                            <h1 className="text-2xl font-black text-white leading-tight uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span></h1>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/70">Logistics & Courier</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] font-bold uppercase opacity-60">Flight Number</p>
-                          <p className="text-2xl font-black tracking-tighter">{receiptData.flightNumber || "---"}</p>
+                          <p className="text-[10px] font-black uppercase text-white/70 tracking-widest mb-1">Tracking Number</p>
+                          <p className="text-2xl font-black text-white font-mono">{receiptData.trackingId || "---"}</p>
                         </div>
                       </div>
 
-                      <div className="p-8 grid grid-cols-3 gap-8 relative">
-                        {/* Perforation line */}
-                        <div className="absolute right-[30%] top-0 bottom-0 border-l-2 border-dashed border-slate-200" />
-                        
-                        <div className="col-span-2 space-y-8">
-                          <div className="flex justify-between items-center">
+                      <div className="px-4">
+                        <div className="flex justify-between items-center mb-12">
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Official Consignment Receipt</p>
+                            <p className="text-sm font-medium text-slate-500 italic">"Global reach, local touch."</p>
+                          </div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date: {receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
+                        </div>
+
+                        {/* Address Grid */}
+                        <div className="grid grid-cols-2 gap-16 mb-12">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <div className="w-2 h-2 rounded-full bg-brand-secondary" />
+                              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Shipper Details</h3>
+                            </div>
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passenger Name</p>
+                              <p className="text-lg font-black text-brand-primary">{receiptData.senderName || "---"}</p>
+                              <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.senderAddress || "---"}</p>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Consignee Details</h3>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-lg font-black text-brand-primary">{receiptData.receiverName || "---"}</p>
+                              <p className="text-sm font-bold text-brand-secondary">{receiptData.receiverEmail || "---"}</p>
+                              <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{receiptData.receiverAddress || "---"}</p>
+                              {receiptData.ownerPhotoUrl && (
+                                <div className="mt-4">
+                                  <img 
+                                    src={receiptData.ownerPhotoUrl} 
+                                    alt="Owner" 
+                                    className="w-24 h-24 rounded-xl object-cover border-2 border-slate-100 shadow-sm"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Main Content Table */}
+                        <div className="border border-slate-200 rounded-2xl overflow-hidden mb-12">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Description</th>
+                                <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Origin</th>
+                                <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weight</th>
+                                <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              <tr>
+                                <td className="px-6 py-8">
+                                  <p className="font-black text-brand-primary mb-1">{receiptData.content || "General Cargo"}</p>
+                                  <p className="text-xs text-slate-400 italic">Status: {receiptData.action || "In Transit"}</p>
+                                </td>
+                                <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.origin || "---"}</td>
+                                <td className="px-6 py-8 text-center font-bold text-slate-600">{receiptData.weight || "---"}</td>
+                                <td className="px-6 py-8 text-right font-black text-brand-primary text-xl">{receiptData.quantity || "1"}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <div className="bg-slate-50/50 p-8 grid grid-cols-2 gap-8 border-t border-slate-200">
+                            <div className="space-y-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                  receiptData.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                                }`}>{receiptData.paymentStatus || "PENDING"}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Delivery</span>
+                                <span className="text-sm font-black text-brand-primary">{receiptData.estDelivery || "---"}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col justify-center items-end space-y-2">
+                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Shipping Fee</p>
+                              <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.shippingFee || "---"}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Payment Methods (Conditional) */}
+                        {receiptData.action.toLowerCase().includes('custom') && receiptData.paymentMethods.length > 0 && (
+                          <div className="mb-12 bg-amber-50/50 p-8 rounded-2xl border border-amber-100">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2">
+                              <ShieldCheck size={14} /> Required Payment Methods for Customs Clearance
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {receiptData.paymentMethods.map((pm, idx) => (
+                                <div key={idx} className="space-y-1">
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pm.name}</p>
+                                  <p className="text-sm font-mono text-brand-primary break-all bg-white p-2 rounded-lg border border-amber-100">{pm.details}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Flight Ticket Design (Original Boarding Pass Style) */}
+                      <div className="border-4 border-brand-primary rounded-3xl overflow-hidden bg-white shadow-xl">
+                        <div className="bg-brand-primary p-6 text-white flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <Plane size={32} className="text-brand-secondary" />
+                            <div>
+                              <h1 className="text-2xl font-black uppercase tracking-tighter">Diplomatic <span className="text-brand-secondary">Xpress</span> Airways</h1>
+                              <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Boarding Pass & E-Ticket</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold uppercase opacity-60">Flight Number</p>
+                            <p className="text-2xl font-black tracking-tighter">{receiptData.flightNumber || "---"}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="p-8">
+                          <div className="grid grid-cols-3 gap-8 mb-8">
+                            <div className="col-span-2 space-y-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Passenger Name</p>
                               <p className="text-xl font-black text-brand-primary uppercase">{receiptData.receiverName || "---"}</p>
                             </div>
-                            <div className="space-y-1 text-right">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</p>
-                              <p className="text-lg font-bold text-slate-600">{receiptData.deliveryDate || "---"}</p>
+                            <div className="text-right space-y-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</p>
+                              <p className="text-xl font-black text-brand-primary">{receiptData.deliveryDate || new Date().toLocaleDateString()}</p>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                            <div className="text-center space-y-1">
-                              <p className="text-3xl font-black text-brand-primary">{receiptData.origin.split('(')[1]?.replace(')', '') || receiptData.origin.substring(0, 3).toUpperCase()}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{receiptData.origin}</p>
-                            </div>
-                            <div className="flex flex-col items-center gap-2 flex-1 px-8">
-                              <div className="w-full h-[2px] bg-slate-200 relative">
-                                <Plane size={16} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand-secondary" />
-                              </div>
-                              <p className="text-[10px] font-bold text-brand-secondary uppercase tracking-widest">{receiptData.airline}</p>
-                            </div>
-                            <div className="text-center space-y-1">
-                              <p className="text-3xl font-black text-brand-primary">{receiptData.destination.split('(')[1]?.replace(')', '') || receiptData.destination.substring(0, 3).toUpperCase()}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{receiptData.destination}</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-4">
+                          <div className="flex items-center justify-between mb-8 bg-slate-50 p-8 rounded-2xl border border-slate-100 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-brand-primary" />
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gate</p>
+                              <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.origin || "---"}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{receiptData.origin || "Origin"}</p>
+                            </div>
+                            <div className="flex-1 flex flex-col items-center px-8">
+                              <div className="w-full flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-brand-primary" />
+                                <div className="flex-1 border-t-2 border-dashed border-slate-200 relative">
+                                  <Plane size={20} className="text-brand-primary absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                </div>
+                                <div className="w-2 h-2 rounded-full border-2 border-brand-primary" />
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Flight Duration: ---</p>
+                            </div>
+                            <div className="space-y-1 text-right">
+                              <p className="text-4xl font-black text-brand-primary tracking-tighter">{receiptData.destination || "---"}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{receiptData.destination || "Destination"}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-8 mb-8 border-b border-slate-100 pb-8">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gate</p>
                               <p className="text-lg font-black text-brand-primary">{receiptData.gate || "TBA"}</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Boarding</p>
-                              <p className="text-lg font-black text-brand-primary">{receiptData.departureTime ? new Date(receiptData.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "---"}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Boarding</p>
+                              <p className="text-lg font-black text-brand-primary">---</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seat</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seat</p>
                               <p className="text-lg font-black text-brand-primary">{receiptData.seatNumber || "---"}</p>
                             </div>
                             <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class</p>
-                              <p className="text-lg font-black text-brand-primary">{receiptData.class}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class</p>
+                              <p className="text-lg font-black text-brand-primary uppercase">{receiptData.class || "Economy"}</p>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="pl-8 space-y-6">
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passenger</p>
-                            <p className="text-sm font-black text-brand-primary uppercase truncate">{receiptData.receiverName || "---"}</p>
-                          </div>
-                          <div className="flex justify-between">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From</p>
-                              <p className="text-sm font-bold text-slate-600">{receiptData.origin.split('(')[1]?.replace(')', '') || receiptData.origin.substring(0, 3).toUpperCase()}</p>
+                          <div className="flex justify-between items-end">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <QrCode size={64} className="text-brand-primary" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Booking Ref: {receiptData.trackingId || "---"}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Price: {receiptData.shippingFee || "---"}</p>
+                              </div>
                             </div>
-                            <div className="space-y-1 text-right">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To</p>
-                              <p className="text-sm font-bold text-slate-600">{receiptData.destination.split('(')[1]?.replace(')', '') || receiptData.destination.substring(0, 3).toUpperCase()}</p>
+                            <div className="flex items-center gap-2 text-emerald-500 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+                              <ShieldCheck size={16} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Valid for Travel • Non-Transferable</span>
                             </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flight</p>
-                              <p className="text-sm font-black text-brand-primary">{receiptData.flightNumber}</p>
-                            </div>
-                            <div className="space-y-1 text-right">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seat</p>
-                              <p className="text-sm font-black text-brand-primary">{receiptData.seatNumber || "---"}</p>
-                            </div>
-                          </div>
-                          <div className="pt-4 flex flex-col items-center gap-2">
-                             {receiptData.ownerPhotoUrl ? (
-                               <img src={receiptData.ownerPhotoUrl} className="w-20 h-20 rounded-lg object-cover border-2 border-slate-100" />
-                             ) : (
-                               <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center">
-                                 <UserIcon size={24} className="text-slate-300" />
-                               </div>
-                             )}
-                             <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">ID Verified</p>
-                             
-                             {/* Signature for Flight */}
-                             <div className="pt-2 border-t border-slate-100 w-full">
-                               <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 text-center">Authorized Signature</p>
-                               <p className="text-lg font-signature text-brand-primary text-center leading-none">Diplomatic Xpress</p>
-                             </div>
                           </div>
                         </div>
                       </div>
+                    </>
+                  )}
 
-                      <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-between items-center">
-                        <div className="flex gap-4">
-                          <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Booking Ref</p>
-                            <p className="text-xs font-bold text-brand-primary">{receiptData.trackingId || "---"}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Price</p>
-                            <p className="text-xs font-bold text-brand-primary">{receiptData.shippingFee || "---"}</p>
-                          </div>
+                  {/* Footer Section (Common) */}
+                  <div className="grid grid-cols-3 gap-8 items-end pt-8 border-t border-slate-100 mt-8">
+                    <div className="col-span-2 space-y-4">
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <ShieldCheck size={20} className="text-brand-secondary" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={14} className="text-emerald-500" />
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Valid for travel • Non-transferable</p>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Security Verification</p>
+                          <p className="text-[10px] text-slate-500 leading-relaxed">This document is digitally signed and verified by Diplomatic Xpress Logistics. Any alteration of this receipt is strictly prohibited and punishable by law.</p>
                         </div>
                       </div>
                     </div>
-                  </>
-                )}
-
-                {/* Footer Section (Common) */}
-                <div className="grid grid-cols-3 gap-8 items-end pt-8 border-t border-slate-100 mt-8">
-                  <div className="col-span-2 space-y-4">
-                    <div className="flex gap-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                        <ShieldCheck size={20} className="text-brand-secondary" />
+                    <div className="text-right space-y-4">
+                      <div className="inline-block border-b-2 border-slate-200 px-8 pb-2 relative">
+                        <p className="text-2xl font-signature text-brand-primary absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap transform -rotate-2">Diplomatic Xpress</p>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-4">Authorized Signature</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Security Verification</p>
-                        <p className="text-[10px] text-slate-500 leading-relaxed">This document is digitally signed and verified by Diplomatic Xpress Logistics. Any alteration of this receipt is strictly prohibited and punishable by law.</p>
-                      </div>
+                      <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Logistics Operations Dept.</p>
                     </div>
                   </div>
-                  <div className="text-right space-y-4">
-                    <div className="inline-block border-b-2 border-slate-200 px-8 pb-2 relative">
-                      <p className="text-2xl font-signature text-brand-primary absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap transform -rotate-2">Diplomatic Xpress</p>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-4">Authorized Signature</p>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Logistics Operations Dept.</p>
-                  </div>
-                </div>
 
-                <div className="mt-12 pt-8 border-t border-slate-50 flex justify-between items-center">
-                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">© 2026 Diplomatic Xpress Logistics. All rights reserved.</p>
-                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">Generated: {new Date().toLocaleString()}</p>
+                  <div className="mt-12 pt-8 border-t border-slate-50 flex justify-between items-center">
+                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">© 2026 Diplomatic Xpress Logistics. All rights reserved.</p>
+                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">Generated: {new Date().toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
             </motion.div>
