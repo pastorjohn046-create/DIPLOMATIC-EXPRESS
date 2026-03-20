@@ -272,7 +272,8 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       fetchShipments();
       fetchLogs();
     } else {
-      alert("Error adding shipment. Tracking ID might exist.");
+      const errorData = await res.json();
+      alert(`Error adding shipment: ${errorData.error || "Tracking ID might exist."}`);
     }
   };
 

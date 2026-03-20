@@ -168,7 +168,9 @@ db.exec(`
 const migrate = () => {
   const tables = {
     users: ['role', 'email'],
-    shipments: ['client_phone', 'client_photo_url', 'claimed_by', 'payment_methods']
+    shipments: ['client_phone', 'client_photo_url', 'claimed_by', 'payment_methods', 'created_at'],
+    admin_logs: ['timestamp'],
+    shipment_updates: ['timestamp']
   };
 
   for (const [table, columns] of Object.entries(tables)) {
@@ -329,9 +331,9 @@ app.post("/api/shipments", upload.fields([
     })();
     broadcastUpdate({ type: "SHIPMENT_UPDATE", data: { id, action: "CREATE" } });
     res.status(201).json({ id });
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ error: "Tracking ID already exists or invalid data" });
+  } catch (err: any) {
+    console.error("Shipment creation error:", err);
+    res.status(400).json({ error: err.message || "Tracking ID already exists or invalid data" });
   }
 });
 
