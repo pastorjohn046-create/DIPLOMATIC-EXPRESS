@@ -142,7 +142,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     }
   }, [selectedTicket]);
 
-  const [persistenceStatus, setPersistenceStatus] = useState<{ database: boolean; uploads: boolean } | null>(null);
+  const [persistenceStatus, setPersistenceStatus] = useState<string | null>(null);
   const [adminSecret, setAdminSecret] = useState(() => localStorage.getItem("admin_secret") || "");
 
   useEffect(() => {
@@ -178,15 +178,16 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       const res = await fetch(`/api/users?admin_user=${user.username}`, {
         headers: { 'x-admin-secret': adminSecret }
       });
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
         if (res.status === 403) {
           console.error("Unauthorized access to users list. Check Admin Secret.");
         }
         throw new Error(data.error || "Failed to fetch users");
       }
+      const data = await res.json();
       setUsers(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch users error:", err);
     }
   };
@@ -194,17 +195,18 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const fetchShipments = async () => {
     try {
       const res = await fetch("/api/shipments");
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
         throw new Error(data.error || "Failed to fetch shipments");
       }
+      const data = await res.json();
       setShipments(data);
       
       // If we are viewing a shipment, refresh its data too
       if (isViewingShipment && viewingShipmentData) {
         fetchViewingShipment(viewingShipmentData.id);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch shipments error:", err);
     }
   };
@@ -291,12 +293,13 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       const res = await fetch(`/api/admin/logs?admin_user=${user.username}`, {
         headers: { 'x-admin-secret': adminSecret }
       });
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
         throw new Error(data.error || "Failed to fetch logs");
       }
+      const data = await res.json();
       setLogs(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch logs error:", err);
     }
   };
@@ -321,22 +324,27 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     if (clientPhoto) formData.append("client_photo", clientPhoto);
     productPhotos.forEach((p) => formData.append("product_photos", p));
 
-    const res = await fetch("/api/shipments", {
-      method: "POST",
-      headers: { "x-admin-secret": adminSecret },
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/shipments", {
+        method: "POST",
+        headers: { "x-admin-secret": adminSecret },
+        body: formData,
+      });
 
-    if (res.ok) {
-      setIsAdding(false);
-      setNewShipment({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Pending" });
-      setClientPhoto(null);
-      setProductPhotos([]);
-      fetchShipments();
-      fetchLogs();
-    } else {
-      const errorData = await res.json();
-      alert(`Error adding shipment: ${errorData.error || "Tracking ID might exist."}`);
+      if (res.ok) {
+        setIsAdding(false);
+        setNewShipment({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Pending" });
+        setClientPhoto(null);
+        setProductPhotos([]);
+        fetchShipments();
+        fetchLogs();
+      } else {
+        const errorData = await res.json().catch(() => ({ error: "Failed to parse error response" }));
+        alert(`Error adding shipment: ${errorData.error || "Tracking ID might exist."}`);
+      }
+    } catch (err) {
+      console.error("Add shipment error:", err);
+      alert("Failed to create consignment. Check console for details.");
     }
   };
 
@@ -409,16 +417,22 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const handleDeleteShipment = async (id: string) => {
     if (!window.confirm(`Are you sure you want to delete shipment ${id}? This will remove all updates and photos.`)) return;
 
-    const res = await fetch(`/api/shipments/${id}?admin_user=${user.username}`, {
-      method: "DELETE",
-      headers: { "x-admin-secret": adminSecret },
-    });
+    try {
+      const res = await fetch(`/api/shipments/${id}?admin_user=${user.username}`, {
+        method: "DELETE",
+        headers: { "x-admin-secret": adminSecret },
+      });
 
-    if (res.ok) {
-      fetchShipments();
-      fetchLogs();
-    } else {
-      alert("Failed to delete shipment.");
+      if (res.ok) {
+        fetchShipments();
+        fetchLogs();
+      } else {
+        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
+        alert(`Error deleting shipment: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Delete shipment error:", err);
+      alert("Failed to delete shipment. Check connection.");
     }
   };
 
@@ -475,7 +489,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         setNewReply("");
         fetchReplies(selectedTicket.id);
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
         alert(`Error sending reply: ${data.error || "Unknown error"}`);
       }
     } catch (err) {

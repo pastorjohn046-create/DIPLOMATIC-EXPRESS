@@ -17,6 +17,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "adminpassword123";
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const uploadDir = process.env.UPLOAD_DIR || "uploads";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -173,14 +174,31 @@ const verifyAdmin = (req: express.Request) => {
   const username = req.body?.admin_user || req.query?.admin_user;
   const adminSecret = req.headers['x-admin-secret'];
   
+  console.log(`Verifying admin: username=${username}, secret_provided=${!!adminSecret}`);
+
   if (ADMIN_SECRET && ADMIN_SECRET.trim() !== "") {
-    if (adminSecret !== ADMIN_SECRET) return false;
+    if (adminSecret !== ADMIN_SECRET) {
+      console.log("Admin verification failed: Secret mismatch");
+      return false;
+    }
   }
 
-  if (!username) return false;
+  if (!username) {
+    console.log("Admin verification failed: No username provided");
+    return false;
+  }
 
-  const user = db.prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'").get(username) as any;
-  return !!user;
+  try {
+    const user = db.prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'").get(username) as any;
+    if (!user) {
+      console.log(`Admin verification failed: User '${username}' not found or not admin`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Database error in verifyAdmin:", err);
+    return false;
+  }
 };
 
 // Logging helper
@@ -453,3 +471,11 @@ async function startServer() {
 }
 
 startServer();
+
+// Global error handler to ensure JSON responses - must be LAST
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Global Error Handler:", err);
+  res.status(err.status || 500).json({ 
+    error: err.message || "Internal Server Error"
+  });
+});
