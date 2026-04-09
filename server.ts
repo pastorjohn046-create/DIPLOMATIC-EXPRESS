@@ -7,10 +7,12 @@ import fs from "fs";
 import { WebSocketServer } from "ws";
 import http from "http";
 import dotenv from "dotenv";
+import serverless from "serverless-http";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
@@ -462,6 +464,12 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static("dist"));
+
+    // API 404 handler - prevents falling through to SPA fallback
+    app.all("/api/*", (req, res) => {
+      res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+    });
+
     app.get("*", (req, res) => res.sendFile(path.resolve("dist/index.html")));
   }
 
@@ -470,7 +478,12 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  startServer();
+}
+
+// Export for Netlify Functions
+export const handler = serverless(app);
 
 // Global error handler to ensure JSON responses - must be LAST
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
