@@ -596,21 +596,6 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         </div>
       </header>
 
-      {persistenceStatus && (!persistenceStatus.database || !persistenceStatus.uploads) && (
-        <div className="p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-2xl md:rounded-3xl flex items-start gap-4 md:gap-6 shadow-sm">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-            <AlertCircle className="text-amber-600" size={20} />
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-base md:text-lg font-black text-amber-900 uppercase tracking-tight">Persistence Warning</h4>
-            <p className="text-xs md:text-sm text-amber-700 leading-relaxed font-medium">
-              Your application is currently running without a <strong className="text-amber-900">Persistent Disk</strong>. 
-              Any shipments or files you create will be <strong className="text-amber-900">lost</strong> when the server restarts or redeploys.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="flex border-b border-slate-100 mb-8">
         <button 
           onClick={() => setActiveAdminTab("shipments")}

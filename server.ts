@@ -4,6 +4,8 @@ import Database from "better-sqlite3";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import { WebSocketServer } from "ws";
 import http from "http";
 import dotenv from "dotenv";
@@ -11,6 +13,15 @@ import serverless from "serverless-http";
 import { fileURLToPath } from "url";
 
 dotenv.config();
+
+// Cloudinary Configuration
+// Automatically picks up CLOUDINARY_URL from environment if set
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 export const app = express();
 const server = http.createServer(app);
@@ -208,11 +219,23 @@ const logAdminAction = (username: string, action: string) => {
   db.prepare("INSERT INTO admin_logs (username, action) VALUES (?, ?)").run(username, action);
 };
 
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
-});
+// Multer setup - Cloudinary for production, local for development
+let storage;
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: async (req, file) => ({
+      folder: "diplomatic-express",
+      format: file.mimetype.split("/")[1],
+      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
+    }),
+  });
+} else {
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+  });
+}
 const upload = multer({ storage });
 
 // API Routes
@@ -260,8 +283,8 @@ app.post("/api/shipments", upload.fields([
   const files = req.files as { [fieldname: string]: Express.Multer.File[] };
   
   try {
-    const client_photo_url = files?.['client_photo'] ? `/uploads/${files['client_photo'][0].filename}` : null;
-    const product_photo_urls = files?.['product_photos'] ? files['product_photos'].map(f => `/uploads/${f.filename}`) : [];
+    const client_photo_url = files?.['client_photo'] ? (files['client_photo'][0] as any).path || `/uploads/${files['client_photo'][0].filename}` : null;
+    const product_photo_urls = files?.['product_photos'] ? files['product_photos'].map(f => (f as any).path || `/uploads/${f.filename}`) : [];
 
     db.prepare(`
       INSERT INTO shipments (id, customer_name, client_phone, client_photo_url, origin, destination, status, product_photos)
@@ -308,7 +331,7 @@ app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
   if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
   const { status, location, notes, admin_user, payment_methods } = req.body;
 
-  const photo_url = req.file ? `/uploads/${req.file.filename}` : null;
+  const photo_url = req.file ? (req.file as any).path || `/uploads/${req.file.filename}` : null;
   
   db.prepare(`
     INSERT INTO shipment_updates (shipment_id, status, location, photo_url, notes)
@@ -448,6 +471,29 @@ app.delete("/api/flights/:id", (req, res) => {
 app.get("/api/admin/setup-check", (req, res) => {
   if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
   res.json({ firebase_active: false, sqlite_active: true, message: "Using SQLite for data persistence." });
+});
+
+app.post("/api/shipments/:id/claim", (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: "Username is required" });
+
+  const shipment = db.prepare("SELECT * FROM shipments WHERE id = ?").get(req.params.id) as any;
+  if (!shipment) return res.status(404).json({ error: "Shipment not found" });
+
+  if (shipment.claimed_by) {
+    if (shipment.claimed_by === username) {
+      return res.status(200).json({ message: "You have already claimed this shipment" });
+    }
+    return res.status(400).json({ error: "This shipment has already been claimed by another user" });
+  }
+
+  db.prepare("UPDATE shipments SET claimed_by = ? WHERE id = ?").run(username, req.params.id);
+  
+  // Log the action
+  db.prepare("INSERT INTO admin_logs (admin_user, action, details) VALUES (?, ?, ?)")
+    .run("System", "Shipment Claimed", `Shipment ${req.params.id} claimed by ${username}`);
+
+  res.json({ success: true });
 });
 
 app.get("/api/health", (req, res) => {
