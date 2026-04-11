@@ -144,6 +144,29 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
   const [persistenceStatus, setPersistenceStatus] = useState<string | null>(null);
   const [adminSecret, setAdminSecret] = useState(() => localStorage.getItem("admin_secret") || "");
+  const [isVerifyingSecret, setIsVerifyingSecret] = useState(false);
+
+  const handleVerifySecret = async () => {
+    if (!adminSecret.trim()) {
+      alert("Please enter an Admin Secret first.");
+      return;
+    }
+    setIsVerifyingSecret(true);
+    try {
+      const res = await fetch(`/api/admin/verify?admin_user=${user.username}`, {
+        headers: { 'x-admin-secret': adminSecret.trim() }
+      });
+      const data = await handleResponse(res, "Verify secret");
+      alert(data.message || "Admin secret verified successfully!");
+      fetchUsers();
+      fetchLogs();
+    } catch (err: any) {
+      console.error("Verify secret error:", err);
+      alert(err.message);
+    } finally {
+      setIsVerifyingSecret(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("admin_secret", adminSecret);
@@ -152,40 +175,53 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const fetchViewingShipment = async (id: string) => {
     try {
       const res = await fetch(`/api/shipments/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setViewingShipmentData(data);
-      }
-    } catch (err) {
+      const data = await handleResponse(res, "Fetch viewing shipment");
+      setViewingShipmentData(data);
+    } catch (err: any) {
       console.error("Fetch viewing shipment error:", err);
     }
   };
 
   const fetchViewingFlight = async (id: number) => {
     try {
-      const res = await fetch(`/api/flights/track/${flights.find(f => f.id === id)?.flight_number}`);
-      if (res.ok) {
-        const data = await res.json();
-        setViewingFlightData(data);
-      }
-    } catch (err) {
+      const flight = flights.find(f => f.id === id);
+      if (!flight) return;
+      const res = await fetch(`/api/flights/track/${flight.flight_number}`);
+      const data = await handleResponse(res, "Fetch viewing flight");
+      setViewingFlightData(data);
+    } catch (err: any) {
       console.error("Fetch viewing flight error:", err);
     }
   };
 
+  const handleResponse = async (res: Response, errorPrefix: string) => {
+    if (res.status === 403) {
+      throw new Error("Unauthorized: Check your Admin Secret. It must match the server's ADMIN_SECRET.");
+    }
+
+    const contentType = res.headers.get("content-type");
+    let data;
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      console.error(`${errorPrefix} - Non-JSON response body (${res.status}):`, text.substring(0, 500));
+      throw new Error(`Server returned non-JSON response (${res.status}). Check server logs.`);
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || `${errorPrefix} failed`);
+    }
+    return data;
+  };
+
   const fetchUsers = async () => {
+    if (!adminSecret.trim()) return;
     try {
       const res = await fetch(`/api/users?admin_user=${user.username}`, {
-        headers: { 'x-admin-secret': adminSecret }
+        headers: { 'x-admin-secret': adminSecret.trim() }
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        if (res.status === 403) {
-          console.error("Unauthorized access to users list. Check Admin Secret.");
-        }
-        throw new Error(data.error || "Failed to fetch users");
-      }
-      const data = await res.json();
+      const data = await handleResponse(res, "Fetch users");
       setUsers(data);
     } catch (err: any) {
       console.error("Fetch users error:", err);
@@ -195,11 +231,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const fetchShipments = async () => {
     try {
       const res = await fetch("/api/shipments");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        throw new Error(data.error || "Failed to fetch shipments");
-      }
-      const data = await res.json();
+      const data = await handleResponse(res, "Fetch shipments");
       setShipments(data);
       
       // If we are viewing a shipment, refresh its data too
@@ -214,12 +246,9 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const fetchFlights = async () => {
     try {
       const res = await fetch("/api/flights");
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch flights");
-      }
+      const data = await handleResponse(res, "Fetch flights");
       setFlights(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch flights error:", err);
     }
   };
@@ -231,7 +260,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-admin-secret": adminSecret
+          "x-admin-secret": adminSecret.trim()
         },
         body: JSON.stringify({ 
           ...newFlight, 
@@ -240,18 +269,15 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           admin_user: user.username 
         }),
       });
-      if (res.ok) {
-        setIsAddingFlight(false);
-        setNewFlight({ airline: "", flight_number: "", origin: "", destination: "", departure_time: "", arrival_time: "", price: "", available_seats: "100" });
-        fetchFlights();
-        fetchLogs();
-      } else {
-        const data = await res.json();
-        alert(`Error adding flight: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+
+      await handleResponse(res, "Add flight");
+      setIsAddingFlight(false);
+      setNewFlight({ airline: "", flight_number: "", origin: "", destination: "", departure_time: "", arrival_time: "", price: "", available_seats: "100" });
+      fetchFlights();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Add flight error:", err);
-      alert("Failed to add flight. Please check your connection.");
+      alert(`Failed to add flight: ${err.message}`);
     }
   };
 
@@ -260,44 +286,35 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     try {
       const res = await fetch(`/api/flights/${id}?admin_user=${user.username}`, { 
         method: "DELETE",
-        headers: { "x-admin-secret": adminSecret }
+        headers: { "x-admin-secret": adminSecret.trim() }
       });
-      if (res.ok) {
-        fetchFlights();
-        fetchLogs();
-      } else {
-        const data = await res.json();
-        alert(`Error deleting flight: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+
+      await handleResponse(res, "Delete flight");
+      fetchFlights();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Delete flight error:", err);
-      alert("Failed to delete flight.");
+      alert(`Failed to delete flight: ${err.message}`);
     }
   };
 
   const fetchTickets = async () => {
     try {
       const res = await fetch("/api/tickets");
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch tickets");
-      }
+      const data = await handleResponse(res, "Fetch tickets");
       setTickets(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch tickets error:", err);
     }
   };
 
   const fetchLogs = async () => {
+    if (!adminSecret.trim()) return;
     try {
       const res = await fetch(`/api/admin/logs?admin_user=${user.username}`, {
-        headers: { 'x-admin-secret': adminSecret }
+        headers: { 'x-admin-secret': adminSecret.trim() }
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        throw new Error(data.error || "Failed to fetch logs");
-      }
-      const data = await res.json();
+      const data = await handleResponse(res, "Fetch logs");
       setLogs(data);
     } catch (err: any) {
       console.error("Fetch logs error:", err);
@@ -327,24 +344,20 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     try {
       const res = await fetch("/api/shipments", {
         method: "POST",
-        headers: { "x-admin-secret": adminSecret },
+        headers: { "x-admin-secret": adminSecret.trim() },
         body: formData,
       });
 
-      if (res.ok) {
-        setIsAdding(false);
-        setNewShipment({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Pending" });
-        setClientPhoto(null);
-        setProductPhotos([]);
-        fetchShipments();
-        fetchLogs();
-      } else {
-        const errorData = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        alert(`Error adding shipment: ${errorData.error || "Tracking ID might exist."}`);
-      }
-    } catch (err) {
+      await handleResponse(res, "Add shipment");
+      setIsAdding(false);
+      setNewShipment({ id: "", customer_name: "", client_phone: "", origin: "", destination: "", status: "Pending" });
+      setClientPhoto(null);
+      setProductPhotos([]);
+      fetchShipments();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Add shipment error:", err);
-      alert("Failed to create consignment. Check console for details.");
+      alert(`Failed to create consignment: ${err.message}`);
     }
   };
 
@@ -365,23 +378,19 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
 
       const res = await fetch(`/api/shipments/${selectedShipment.id}/updates`, {
         method: "POST",
-        headers: { "x-admin-secret": adminSecret },
+        headers: { "x-admin-secret": adminSecret.trim() },
         body: formData,
       });
 
-      if (res.ok) {
-        setSelectedShipment(null);
-        setUpdateData({ status: "Warehouse", location: "", notes: "", paymentMethods: [] });
-        setPhoto(null);
-        fetchShipments();
-        fetchLogs();
-      } else {
-        const data = await res.json();
-        alert(`Error updating status: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+      await handleResponse(res, "Update status");
+      setSelectedShipment(null);
+      setUpdateData({ status: "Warehouse", location: "", notes: "", paymentMethods: [] });
+      setPhoto(null);
+      fetchShipments();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Update status error:", err);
-      alert("Failed to update status.");
+      alert(`Failed to update status: ${err.message}`);
     }
   };
 
@@ -394,23 +403,19 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "x-admin-secret": adminSecret
+          "x-admin-secret": adminSecret.trim()
         },
         body: JSON.stringify({ ...editShipmentData, admin_user: user.username }),
       });
 
-      if (res.ok) {
-        setIsEditingShipment(false);
-        setSelectedShipment(null);
-        fetchShipments();
-        fetchLogs();
-      } else {
-        const data = await res.json();
-        alert(`Error editing shipment: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+      await handleResponse(res, "Edit shipment");
+      setIsEditingShipment(false);
+      setSelectedShipment(null);
+      fetchShipments();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Edit shipment error:", err);
-      alert("Failed to edit shipment.");
+      alert(`Failed to edit shipment: ${err.message}`);
     }
   };
 
@@ -420,29 +425,25 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
     try {
       const res = await fetch(`/api/shipments/${id}?admin_user=${user.username}`, {
         method: "DELETE",
-        headers: { "x-admin-secret": adminSecret },
+        headers: { "x-admin-secret": adminSecret.trim() },
       });
 
-      if (res.ok) {
-        fetchShipments();
-        fetchLogs();
-      } else {
-        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        alert(`Error deleting shipment: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+      await handleResponse(res, "Delete shipment");
+      setSelectedShipment(null);
+      fetchShipments();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Delete shipment error:", err);
-      alert("Failed to delete shipment. Check connection.");
+      alert(err.message);
     }
   };
 
   const fetchReplies = async (ticketId: number) => {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/replies`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch replies");
+      const data = await handleResponse(res, "Fetch replies");
       setReplies(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch replies error:", err);
     }
   };
@@ -456,23 +457,19 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-admin-secret": adminSecret
+          "x-admin-secret": adminSecret.trim()
         },
         body: JSON.stringify({ ...flightUpdateData, admin_user: user.username }),
       });
 
-      if (res.ok) {
-        setSelectedFlight(null);
-        setFlightUpdateData({ status: "Scheduled", location: "", notes: "" });
-        fetchFlights();
-        fetchLogs();
-      } else {
-        const data = await res.json();
-        alert(`Error updating flight: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+      await handleResponse(res, "Update flight status");
+      setSelectedFlight(null);
+      setFlightUpdateData({ status: "Scheduled", location: "", notes: "" });
+      fetchFlights();
+      fetchLogs();
+    } catch (err: any) {
       console.error("Update flight status error:", err);
-      alert("Failed to update flight status.");
+      alert(err.message);
     }
   };
 
@@ -483,18 +480,15 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
       const res = await fetch(`/api/tickets/${selectedTicket.id}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender_username: "Admin", message: newReply }),
+        body: JSON.stringify({ sender_username: user.username, message: newReply }),
       });
-      if (res.ok) {
-        setNewReply("");
-        fetchReplies(selectedTicket.id);
-      } else {
-        const data = await res.json().catch(() => ({ error: "Failed to parse error response" }));
-        alert(`Error sending reply: ${data.error || "Unknown error"}`);
-      }
-    } catch (err) {
+      
+      await handleResponse(res, "Reply to ticket");
+      setNewReply("");
+      fetchReplies(selectedTicket.id);
+    } catch (err: any) {
       console.error("Reply error:", err);
-      alert("Failed to send reply.");
+      alert(err.message);
     }
   };
 
@@ -570,17 +564,31 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
           </div>
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 md:gap-4 w-full lg:w-auto">
-          <div className="relative group col-span-2 sm:col-span-1 sm:flex-1 md:flex-none">
-            <input 
-              type="password" 
-              placeholder="Admin Secret" 
-              value={adminSecret} 
-              onChange={(e) => setAdminSecret(e.target.value)}
-              className="input py-2 px-4 text-xs w-full md:w-32 focus:md:w-48 transition-all"
-            />
-            <div className="absolute -top-8 left-0 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-              Required if ADMIN_SECRET is set on server
+          <div className="relative group col-span-2 sm:col-span-1 sm:flex-1 md:flex-none flex gap-2">
+            <div className="relative flex-1">
+              <input 
+                type="password" 
+                placeholder="Admin Secret" 
+                value={adminSecret} 
+                onChange={(e) => setAdminSecret(e.target.value)}
+                className="input py-2 px-4 text-xs w-full md:w-32 focus:md:w-48 transition-all"
+              />
+              <div className="absolute -top-8 left-0 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Required if ADMIN_SECRET is set on server
+              </div>
             </div>
+            <button 
+              onClick={handleVerifySecret}
+              disabled={isVerifyingSecret}
+              title="Verify Admin Secret"
+              className="p-2 bg-slate-100 hover:bg-brand-primary hover:text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isVerifyingSecret ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check size={16} />
+              )}
+            </button>
           </div>
           <button onClick={() => setShowReceiptGen(true)} className="btn-outline flex items-center justify-center gap-2 py-2 md:py-3 px-3 md:px-4">
             <FileText size={16} />

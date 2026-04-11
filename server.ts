@@ -27,7 +27,8 @@ export const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "adminpassword123";
+const ADMIN_SECRET = (process.env.ADMIN_SECRET || "adminpassword123").trim();
+console.log(`[Config] ADMIN_SECRET initialized (length: ${ADMIN_SECRET.length})`);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -132,6 +133,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     action TEXT,
+    details TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
@@ -185,43 +187,64 @@ app.post("/api/auth/login", (req, res) => {
 // Admin verification helper
 const verifyAdmin = (req: express.Request) => {
   const username = req.body?.admin_user || req.query?.admin_user;
-  const adminSecret = req.headers['x-admin-secret'];
+  const adminSecret = req.headers['x-admin-secret'] as string;
   
-  console.log(`Verifying admin: username=${username}, secret_provided=${!!adminSecret}`);
+  console.log(`[Auth] Verifying admin: username=${username}, secret_provided=${!!adminSecret}`);
 
-  if (ADMIN_SECRET && ADMIN_SECRET.trim() !== "") {
-    if (adminSecret !== ADMIN_SECRET) {
-      console.log("Admin verification failed: Secret mismatch");
+  if (ADMIN_SECRET && ADMIN_SECRET !== "") {
+    if (!adminSecret) {
+      console.log("[Auth] Admin verification failed: No secret provided in headers");
+      return false;
+    }
+    
+    const trimmedProvided = adminSecret.trim();
+    if (trimmedProvided !== ADMIN_SECRET) {
+      console.log(`[Auth] Admin verification failed: Secret mismatch.`);
+      console.log(`[Auth] Provided length: ${trimmedProvided.length}, Expected length: ${ADMIN_SECRET.length}`);
+      
+      // Log first and last chars for debugging (safely)
+      if (trimmedProvided.length > 0 && ADMIN_SECRET.length > 0) {
+        console.log(`[Auth] Debug: Provided starts with '${trimmedProvided[0]}' ends with '${trimmedProvided[trimmedProvided.length-1]}'`);
+        console.log(`[Auth] Debug: Expected starts with '${ADMIN_SECRET[0]}' ends with '${ADMIN_SECRET[ADMIN_SECRET.length-1]}'`);
+      }
+      
+      // Check for common issues
+      if (trimmedProvided.toLowerCase() === ADMIN_SECRET.toLowerCase()) {
+        console.log(`[Auth] Debug: Secrets match if case-insensitive. Check case.`);
+      }
+      
       return false;
     }
   }
 
   if (!username) {
-    console.log("Admin verification failed: No username provided");
+    console.log("[Auth] Admin verification failed: No username provided");
     return false;
   }
 
   try {
     const user = db.prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'").get(username) as any;
     if (!user) {
-      console.log(`Admin verification failed: User '${username}' not found or not admin`);
+      console.log(`[Auth] Admin verification failed: User '${username}' not found or not admin in database`);
       return false;
     }
+    console.log(`[Auth] Admin verification successful for user: ${username}`);
     return true;
   } catch (err) {
-    console.error("Database error in verifyAdmin:", err);
+    console.error("[Auth] Database error in verifyAdmin:", err);
     return false;
   }
 };
 
 // Logging helper
-const logAdminAction = (username: string, action: string) => {
-  db.prepare("INSERT INTO admin_logs (username, action) VALUES (?, ?)").run(username, action);
+const logAdminAction = (username: string, action: string, details: string | null = null) => {
+  db.prepare("INSERT INTO admin_logs (username, action, details) VALUES (?, ?, ?)").run(username, action, details);
 };
 
 // Multer setup - Cloudinary for production, local for development
 let storage;
-if (process.env.CLOUDINARY_CLOUD_NAME) {
+if (process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_URL) {
+  console.log("Using Cloudinary for file storage");
   storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => ({
@@ -231,6 +254,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME) {
     }),
   });
 } else {
+  console.log("Using local disk for file storage");
   storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
@@ -240,13 +264,27 @@ const upload = multer({ storage });
 
 // API Routes
 app.get("/api/users", (req, res) => {
-  if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
+  if (!verifyAdmin(req)) {
+    console.log(`[API] 403 Unauthorized for ${req.url}`);
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const users = db.prepare("SELECT id, username, email, role FROM users").all();
   res.json(users);
 });
 
+app.get("/api/admin/verify", (req, res) => {
+  if (verifyAdmin(req)) {
+    res.json({ success: true, message: "Admin secret verified successfully." });
+  } else {
+    res.status(403).json({ success: false, error: "Admin secret verification failed." });
+  }
+});
+
 app.get("/api/admin/logs", (req, res) => {
-  if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
+  if (!verifyAdmin(req)) {
+    console.log(`[API] 403 Unauthorized for ${req.url}`);
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const logs = db.prepare("SELECT * FROM admin_logs ORDER BY timestamp DESC LIMIT 100").all();
   res.json(logs);
 });
@@ -277,15 +315,28 @@ app.post("/api/shipments", upload.fields([
   { name: 'client_photo', maxCount: 1 },
   { name: 'product_photos', maxCount: 5 }
 ]), (req, res) => {
-  if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
+  console.log("POST /api/shipments - Request received");
+  
+  if (!verifyAdmin(req)) {
+    console.log("POST /api/shipments - Admin verification failed");
+    return res.status(403).json({ error: "Unauthorized" });
+  }
 
   const { id, customer_name, client_phone, origin, destination, admin_user, status } = req.body;
+  
+  if (!id || !customer_name || !origin || !destination) {
+    console.log("POST /api/shipments - Missing required fields", { id, customer_name, origin, destination });
+    return res.status(400).json({ error: "Missing required fields (ID, Customer Name, Origin, Destination)" });
+  }
+
   const files = req.files as { [fieldname: string]: Express.Multer.File[] };
   
   try {
     const client_photo_url = files?.['client_photo'] ? (files['client_photo'][0] as any).path || `/uploads/${files['client_photo'][0].filename}` : null;
     const product_photo_urls = files?.['product_photos'] ? files['product_photos'].map(f => (f as any).path || `/uploads/${f.filename}`) : [];
 
+    console.log(`POST /api/shipments - Inserting shipment ${id}`);
+    
     db.prepare(`
       INSERT INTO shipments (id, customer_name, client_phone, client_photo_url, origin, destination, status, product_photos)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -297,8 +348,10 @@ app.post("/api/shipments", upload.fields([
       if (client.readyState === 1) client.send(JSON.stringify({ type: "SHIPMENT_UPDATE", data: { id, action: "CREATE" } }));
     });
 
+    console.log(`POST /api/shipments - Shipment ${id} created successfully`);
     res.status(201).json({ id });
   } catch (err: any) {
+    console.error("POST /api/shipments - Error:", err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -316,46 +369,70 @@ app.get("/api/shipments/:id", (req, res) => {
 });
 
 app.put("/api/shipments/:id", (req, res) => {
-  if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
+  console.log(`PUT /api/shipments/${req.params.id} - Request received`);
+  if (!verifyAdmin(req)) {
+    console.log(`PUT /api/shipments/${req.params.id} - Admin verification failed`);
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const { customer_name, client_phone, origin, destination, admin_user } = req.body;
 
-  db.prepare(`
-    UPDATE shipments SET customer_name = ?, client_phone = ?, origin = ?, destination = ? WHERE id = ?
-  `).run(customer_name, client_phone, origin, destination, req.params.id);
+  try {
+    console.log(`PUT /api/shipments/${req.params.id} - Updating shipment details`);
+    db.prepare(`
+      UPDATE shipments SET customer_name = ?, client_phone = ?, origin = ?, destination = ? WHERE id = ?
+    `).run(customer_name, client_phone, origin, destination, req.params.id);
 
-  if (admin_user) logAdminAction(admin_user, `Edited shipment ${req.params.id}`);
-  res.json({ success: true });
+    if (admin_user) logAdminAction(admin_user, `Edited shipment ${req.params.id}`);
+    
+    console.log(`PUT /api/shipments/${req.params.id} - Shipment updated successfully`);
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error(`PUT /api/shipments/${req.params.id} - Error:`, err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
 app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
-  if (!verifyAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
+  console.log(`POST /api/shipments/${req.params.id}/updates - Request received`);
+  if (!verifyAdmin(req)) {
+    console.log(`POST /api/shipments/${req.params.id}/updates - Admin verification failed`);
+    return res.status(403).json({ error: "Unauthorized" });
+  }
   const { status, location, notes, admin_user, payment_methods } = req.body;
 
   const photo_url = req.file ? (req.file as any).path || `/uploads/${req.file.filename}` : null;
   
-  db.prepare(`
-    INSERT INTO shipment_updates (shipment_id, status, location, photo_url, notes)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(req.params.id, status, location || null, photo_url, notes || null);
+  try {
+    console.log(`POST /api/shipments/${req.params.id}/updates - Inserting update record`);
+    db.prepare(`
+      INSERT INTO shipment_updates (shipment_id, status, location, photo_url, notes)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.params.id, status, location || null, photo_url, notes || null);
 
-  let updateSql = "UPDATE shipments SET status = ?";
-  const params = [status];
-  if (payment_methods) {
-    updateSql += ", payment_methods = ?";
-    params.push(payment_methods);
+    let updateSql = "UPDATE shipments SET status = ?";
+    const params = [status];
+    if (payment_methods) {
+      updateSql += ", payment_methods = ?";
+      params.push(payment_methods);
+    }
+    updateSql += " WHERE id = ?";
+    params.push(req.params.id);
+    
+    console.log(`POST /api/shipments/${req.params.id}/updates - Updating shipment status`);
+    db.prepare(updateSql).run(...params);
+
+    if (admin_user) logAdminAction(admin_user, `Updated shipment ${req.params.id} to ${status}`);
+
+    wss.clients.forEach(client => {
+      if (client.readyState === 1) client.send(JSON.stringify({ type: "SHIPMENT_UPDATE", data: { id: req.params.id, action: "UPDATE" } }));
+    });
+
+    console.log(`POST /api/shipments/${req.params.id}/updates - Update successful`);
+    res.status(201).json({ success: true });
+  } catch (err: any) {
+    console.error(`POST /api/shipments/${req.params.id}/updates - Error:`, err);
+    res.status(400).json({ error: err.message });
   }
-  updateSql += " WHERE id = ?";
-  params.push(req.params.id);
-  
-  db.prepare(updateSql).run(...params);
-
-  if (admin_user) logAdminAction(admin_user, `Updated shipment ${req.params.id} to ${status}`);
-
-  wss.clients.forEach(client => {
-    if (client.readyState === 1) client.send(JSON.stringify({ type: "SHIPMENT_UPDATE", data: { id: req.params.id, action: "UPDATE" } }));
-  });
-
-  res.status(201).json({ success: true });
 });
 
 app.delete("/api/shipments/:id", (req, res) => {
@@ -490,14 +567,18 @@ app.post("/api/shipments/:id/claim", (req, res) => {
   db.prepare("UPDATE shipments SET claimed_by = ? WHERE id = ?").run(username, req.params.id);
   
   // Log the action
-  db.prepare("INSERT INTO admin_logs (admin_user, action, details) VALUES (?, ?, ?)")
-    .run("System", "Shipment Claimed", `Shipment ${req.params.id} claimed by ${username}`);
+  logAdminAction("System", `Shipment ${req.params.id} claimed by ${username}`);
 
   res.json({ success: true });
 });
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", persistence: "sqlite" });
+});
+
+// API 404 handler - catches unmatched /api routes before they fall through to SPA fallback
+app.all("/api/*", (req, res) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
 });
 
 // Vite middleware
@@ -510,11 +591,6 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static("dist"));
-
-    // API 404 handler - prevents falling through to SPA fallback
-    app.all("/api/*", (req, res) => {
-      res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
-    });
 
     app.get("*", (req, res) => res.sendFile(path.resolve("dist/index.html")));
   }
