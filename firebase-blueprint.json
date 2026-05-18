@@ -87,9 +87,9 @@
       },
       "required": ["airline", "flight_number", "origin", "destination", "departure_time", "arrival_time", "price"]
     },
-    "AdminLog": {
-      "title": "AdminLog",
-      "description": "Log of admin actions",
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Log of system activities",
       "type": "object",
       "properties": {
         "username": { "type": "string" },
@@ -106,6 +106,6 @@
     "/tickets/{ticketId}": { "schema": "Ticket", "description": "Customer service tickets" },
     "/tickets/{ticketId}/replies/{replyId}": { "schema": "TicketReply", "description": "Replies to a ticket" },
     "/flights/{flightId}": { "schema": "Flight", "description": "Flight schedules" },
-    "/admin_logs/{logId}": { "schema": "AdminLog", "description": "Admin action logs" }
+    "/activity_logs/{logId}": { "schema": "ActivityLog", "description": "System activity logs" }
   }
 }

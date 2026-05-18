@@ -592,24 +592,34 @@ const cleanupOldData = () => {
     // Clean activity logs older than 30 days
     const logResult = db.prepare("DELETE FROM activity_logs WHERE timestamp < ?").run(thirtyDaysAgo);
     
-    // Clean old shipment updates
-    const updatesResult = db.prepare("DELETE FROM shipment_updates WHERE timestamp < ?").run(thirtyDaysAgo);
-
-    // Clean old flights updates
-    const flightUpdatesResult = db.prepare("DELETE FROM flight_updates WHERE timestamp < ?").run(thirtyDaysAgo);
-
     // Clean OLD shipments (consignments) that are Delivered or Cancelled
-    const shipmentResult = db.prepare("DELETE FROM shipments WHERE created_at < ? AND status IN ('Delivered', 'Cancelled')").run(thirtyDaysAgo);
+    const oldShipmentIds = db.prepare("SELECT id FROM shipments WHERE created_at < ? AND status IN ('Delivered', 'Cancelled')").all(thirtyDaysAgo).map((s: any) => s.id);
+    
+    if (oldShipmentIds.length > 0) {
+      const placeholders = oldShipmentIds.map(() => "?").join(",");
+      db.prepare(`DELETE FROM shipment_updates WHERE shipment_id IN (${placeholders})`).run(...oldShipmentIds);
+      db.prepare(`DELETE FROM shipments WHERE id IN (${placeholders})`).run(...oldShipmentIds);
+    }
 
     // Clean OLD flights that are completed (Arrived or Cancelled)
-    const flightResult = db.prepare("DELETE FROM flights WHERE created_at < ? AND status IN ('Arrived', 'Cancelled')").run(thirtyDaysAgo);
+    const oldFlightIds = db.prepare("SELECT id FROM flights WHERE created_at < ? AND status IN ('Arrived', 'Landed', 'Cancelled')").all(thirtyDaysAgo).map((f: any) => f.id);
     
+    if (oldFlightIds.length > 0) {
+      const placeholders = oldFlightIds.map(() => "?").join(",");
+      db.prepare(`DELETE FROM flight_updates WHERE flight_id IN (${placeholders})`).run(...oldFlightIds);
+      db.prepare(`DELETE FROM bookings WHERE flight_id IN (${placeholders})`).run(...oldFlightIds);
+      db.prepare(`DELETE FROM flights WHERE id IN (${placeholders})`).run(...oldFlightIds);
+    }
+    
+    // Clean any orphaned updates just in case
+    const orphanedUpdates = db.prepare("DELETE FROM shipment_updates WHERE shipment_id NOT IN (SELECT id FROM shipments)").run();
+    const orphanedFlightUpdates = db.prepare("DELETE FROM flight_updates WHERE flight_id NOT IN (SELECT id FROM flights)").run();
+
     console.log(`[Maintenance] Cleanup complete.`);
     console.log(`- Logs: ${logResult.changes}`);
-    console.log(`- Shipment Updates: ${updatesResult.changes}`);
-    console.log(`- Flight Updates: ${flightUpdatesResult.changes}`);
-    console.log(`- Old Shipments: ${shipmentResult.changes}`);
-    console.log(`- Old Flights: ${flightResult.changes}`);
+    console.log(`- Old Shipments: ${oldShipmentIds.length}`);
+    console.log(`- Old Flights: ${oldFlightIds.length}`);
+    console.log(`- Orphaned Records: ${orphanedUpdates.changes + orphanedFlightUpdates.changes}`);
   } catch (err) {
     console.error("[Maintenance] Cleanup error:", err);
   }
