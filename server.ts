@@ -129,7 +129,7 @@ db.exec(`
     FOREIGN KEY(flight_id) REFERENCES flights(id)
   );
 
-  CREATE TABLE IF NOT EXISTS admin_logs (
+  CREATE TABLE IF NOT EXISTS activity_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     action TEXT,
@@ -161,7 +161,7 @@ app.post("/api/auth/signup", (req, res) => {
 
     const stmt = db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
     const info = stmt.run(username, email || null, password, role || 'user');
-    
+    logAction(username, "Signup", `New user registered with email: ${email || 'none'}`);
     res.status(201).json({ id: info.lastInsertRowid, username, email, role: role || 'user' });
   } catch (err: any) {
     if (err.message.includes("UNIQUE constraint failed")) {
@@ -178,6 +178,7 @@ app.post("/api/auth/login", (req, res) => {
 
   if (user) {
     const { password: _, ...userWithoutPassword } = user;
+    logAction(user.username, "Login", `User logged into the system`);
     res.json(userWithoutPassword);
   } else {
     res.status(401).json({ error: "Invalid credentials" });
@@ -237,8 +238,8 @@ const verifyAdmin = (req: express.Request) => {
 };
 
 // Logging helper
-const logAdminAction = (username: string, action: string, details: string | null = null) => {
-  db.prepare("INSERT INTO admin_logs (username, action, details) VALUES (?, ?, ?)").run(username, action, details);
+const logAction = (username: string, action: string, details: string | null = null) => {
+  db.prepare("INSERT INTO activity_logs (username, action, details) VALUES (?, ?, ?)").run(username, action, details);
 };
 
 // Multer setup - Cloudinary for production, local for development
@@ -285,7 +286,7 @@ app.get("/api/admin/logs", (req, res) => {
     console.log(`[API] 403 Unauthorized for ${req.url}`);
     return res.status(403).json({ error: "Unauthorized" });
   }
-  const logs = db.prepare("SELECT * FROM admin_logs ORDER BY timestamp DESC LIMIT 100").all();
+  const logs = db.prepare("SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 100").all();
   res.json(logs);
 });
 
@@ -342,7 +343,7 @@ app.post("/api/shipments", upload.fields([
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, customer_name, client_phone || null, client_photo_url, origin, destination, status || 'Warehouse', JSON.stringify(product_photo_urls));
 
-    if (admin_user) logAdminAction(admin_user, `Created shipment ${id}`);
+    if (admin_user) logAction(admin_user, `Created shipment ${id}`);
     
     wss.clients.forEach(client => {
       if (client.readyState === 1) client.send(JSON.stringify({ type: "SHIPMENT_UPDATE", data: { id, action: "CREATE" } }));
@@ -382,7 +383,7 @@ app.put("/api/shipments/:id", (req, res) => {
       UPDATE shipments SET customer_name = ?, client_phone = ?, origin = ?, destination = ? WHERE id = ?
     `).run(customer_name, client_phone, origin, destination, req.params.id);
 
-    if (admin_user) logAdminAction(admin_user, `Edited shipment ${req.params.id}`);
+    if (admin_user) logAction(admin_user, `Edited shipment ${req.params.id}`);
     
     console.log(`PUT /api/shipments/${req.params.id} - Shipment updated successfully`);
     res.json({ success: true });
@@ -421,7 +422,7 @@ app.post("/api/shipments/:id/updates", upload.single("photo"), (req, res) => {
     console.log(`POST /api/shipments/${req.params.id}/updates - Updating shipment status`);
     db.prepare(updateSql).run(...params);
 
-    if (admin_user) logAdminAction(admin_user, `Updated shipment ${req.params.id} to ${status}`);
+    if (admin_user) logAction(admin_user, `Updated shipment ${req.params.id} to ${status}`);
 
     wss.clients.forEach(client => {
       if (client.readyState === 1) client.send(JSON.stringify({ type: "SHIPMENT_UPDATE", data: { id: req.params.id, action: "UPDATE" } }));
@@ -442,7 +443,7 @@ app.delete("/api/shipments/:id", (req, res) => {
   db.prepare("DELETE FROM shipment_updates WHERE shipment_id = ?").run(req.params.id);
   db.prepare("DELETE FROM shipments WHERE id = ?").run(req.params.id);
 
-  if (admin_user) logAdminAction(admin_user as string, `Deleted shipment ${req.params.id}`);
+  if (admin_user) logAction(admin_user as string, `Deleted shipment ${req.params.id}`);
   res.json({ success: true });
 });
 
@@ -495,7 +496,7 @@ app.post("/api/flights", (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(airline, flight_number, origin, destination, departure_time, arrival_time, Number(price), Number(available_seats || 100));
 
-  if (admin_user) logAdminAction(admin_user, `Added flight ${flight_number}`);
+  if (admin_user) logAction(admin_user, `Added flight ${flight_number}`);
   res.status(201).json({ id: info.lastInsertRowid });
 });
 
@@ -511,7 +512,7 @@ app.post("/api/flights/:id/updates", (req, res) => {
   const { status, location, notes, admin_user } = req.body;
   db.prepare("INSERT INTO flight_updates (flight_id, status, location, notes) VALUES (?, ?, ?, ?)").run(req.params.id, status, location || null, notes || null);
   db.prepare("UPDATE flights SET status = ? WHERE id = ?").run(status, req.params.id);
-  if (admin_user) logAdminAction(admin_user, `Updated flight ${req.params.id} to ${status}`);
+  if (admin_user) logAction(admin_user, `Updated flight ${req.params.id} to ${status}`);
   res.status(201).json({ success: true });
 });
 
@@ -567,7 +568,7 @@ app.post("/api/shipments/:id/claim", (req, res) => {
   db.prepare("UPDATE shipments SET claimed_by = ? WHERE id = ?").run(username, req.params.id);
   
   // Log the action
-  logAdminAction("System", `Shipment ${req.params.id} claimed by ${username}`);
+  logAction("System", `Shipment ${req.params.id} claimed by ${username}`);
 
   res.json({ success: true });
 });
@@ -582,7 +583,45 @@ app.all("/api/*", (req, res) => {
 });
 
 // Vite middleware
+// Database cleanup routine - Ensures storage efficiency and retention policy
+const cleanupOldData = () => {
+  console.log("[Maintenance] Running 30-day data retention cleanup...");
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Clean activity logs older than 30 days
+    const logResult = db.prepare("DELETE FROM activity_logs WHERE timestamp < ?").run(thirtyDaysAgo);
+    
+    // Clean old shipment updates
+    const updatesResult = db.prepare("DELETE FROM shipment_updates WHERE timestamp < ?").run(thirtyDaysAgo);
+
+    // Clean old flights updates
+    const flightUpdatesResult = db.prepare("DELETE FROM flight_updates WHERE timestamp < ?").run(thirtyDaysAgo);
+
+    // Clean OLD shipments (consignments) that are Delivered or Cancelled
+    const shipmentResult = db.prepare("DELETE FROM shipments WHERE created_at < ? AND status IN ('Delivered', 'Cancelled')").run(thirtyDaysAgo);
+
+    // Clean OLD flights that are completed (Arrived or Cancelled)
+    const flightResult = db.prepare("DELETE FROM flights WHERE created_at < ? AND status IN ('Arrived', 'Cancelled')").run(thirtyDaysAgo);
+    
+    console.log(`[Maintenance] Cleanup complete.`);
+    console.log(`- Logs: ${logResult.changes}`);
+    console.log(`- Shipment Updates: ${updatesResult.changes}`);
+    console.log(`- Flight Updates: ${flightUpdatesResult.changes}`);
+    console.log(`- Old Shipments: ${shipmentResult.changes}`);
+    console.log(`- Old Flights: ${flightResult.changes}`);
+  } catch (err) {
+    console.error("[Maintenance] Cleanup error:", err);
+  }
+};
+
+// Start server
 async function startServer() {
+  // Run initial cleanup
+  cleanupOldData();
+  // Schedule cleanup every 30 days
+  setInterval(cleanupOldData, 30 * 24 * 60 * 60 * 1000);
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

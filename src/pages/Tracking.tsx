@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck, MessageSquare, ShieldCheck } from "lucide-react";
+import { Search, Clock, MapPin, CheckCircle2, AlertCircle, Download, Camera, PackageCheck, MessageSquare, ShieldCheck, Plane, Calendar, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { Shipment, User } from "../types";
 
@@ -96,6 +96,11 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
     return steps.findIndex(s => s.toLowerCase() === status.toLowerCase());
   };
 
+  const getFlightStatusStep = (status: string) => {
+    const steps = ["Scheduled", "Boarding", "Taxiing", "Taking Off", "In-Air", "Descending", "Landing", "Landed"];
+    return steps.findIndex(s => s.toLowerCase() === status.toLowerCase());
+  };
+
   return (
     <div className="py-20 max-w-5xl mx-auto px-6 space-y-16">
       <div className="text-center space-y-4 md:space-y-6 max-w-2xl mx-auto">
@@ -175,6 +180,46 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
             </div>
           </div>
 
+          <div className="card overflow-hidden">
+            <h4 className="text-xl font-black text-brand-primary tracking-tight mb-8 flex items-center gap-2">
+              <Plane size={24} className="text-brand-secondary" />
+              Flight Progress
+            </h4>
+            <div className="relative pt-4 overflow-x-auto pb-8 -mx-6 px-6">
+              <div className="min-w-[800px] relative">
+                <div className="absolute top-[1.6rem] left-0 w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(0, (getFlightStatusStep(flight.status) / 7) * 100)}%` }}
+                    className="h-full bg-brand-secondary shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-1000"
+                  />
+                </div>
+                <div className="relative flex justify-between">
+                  {["Scheduled", "Boarding", "Taxiing", "Taking Off", "In-Air", "Descending", "Landing", "Landed"].map((step, i) => {
+                    const isActive = getFlightStatusStep(flight.status) >= i;
+                    const isCurrent = getFlightStatusStep(flight.status) === i;
+                    return (
+                      <div key={step} className="flex flex-col items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-700 ${
+                          isCurrent ? "bg-brand-secondary border-brand-secondary text-white shadow-xl shadow-brand-secondary/30 scale-125 z-10" :
+                          isActive ? "bg-brand-secondary/10 border-brand-secondary text-brand-secondary" : "bg-white border-slate-100 text-slate-200"
+                        }`}>
+                          {isActive ? <CheckCircle2 size={20} /> : <div className="w-1.5 h-1.5 bg-current rounded-full" />}
+                        </div>
+                        <div className="text-center">
+                          <span className={`text-[9px] font-black uppercase tracking-widest leading-tight block ${
+                            isCurrent ? "text-brand-secondary underline underline-offset-4" :
+                            isActive ? "text-brand-primary" : "text-slate-300"
+                          }`}>{step}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="card grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="space-y-4">
               <h4 className="text-xl font-black text-brand-primary tracking-tight">Route Details</h4>
@@ -214,40 +259,73 @@ export const TrackingPortal = ({ user, setActiveTab }: TrackingPortalProps) => {
             </div>
           </div>
 
-          <div className="card space-y-10">
-            <h4 className="text-2xl font-black text-brand-primary tracking-tight flex items-center gap-3">
-              <Clock size={28} className="text-brand-secondary" />
-              Flight Updates
-            </h4>
-            <div className="space-y-10">
-              {flight.updates?.map((update: any, i: number) => (
-                <div key={i} className="flex gap-8 group">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-full border-4 border-white shadow-lg transition-colors duration-500 ${i === 0 ? "bg-brand-secondary scale-125" : "bg-slate-300"}`} />
-                    {i !== flight.updates!.length - 1 && <div className="w-1 flex-1 bg-slate-100 my-2 rounded-full" />}
-                  </div>
-                  <div className="flex-1 space-y-4 pb-10">
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-2">
-                      <div>
-                        <p className="text-xl font-black text-brand-primary">{update.status}</p>
-                        <p className="text-slate-500 font-medium flex items-center gap-2">
-                          <MapPin size={16} className="text-brand-secondary" />
-                          {update.location || "En route"}
-                        </p>
+          <div className="card space-y-12">
+            <div className="flex justify-between items-center">
+              <h4 className="text-2xl font-black text-brand-primary tracking-tight flex items-center gap-3">
+                <Clock size={28} className="text-brand-secondary" />
+                Flight History
+              </h4>
+              <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Live Updates</span>
+            </div>
+            
+            <div className="space-y-0">
+              {flight.updates?.map((update: any, i: number) => {
+                const isLatest = i === 0;
+                return (
+                  <div key={i} className="flex gap-8 group relative">
+                    <div className="flex flex-col items-center relative">
+                      <div className={`w-6 h-6 rounded-full border-4 border-white shadow-xl z-20 flex items-center justify-center transition-all duration-500 ${
+                        isLatest ? "bg-brand-secondary scale-125 ring-4 ring-brand-secondary/20" : "bg-slate-200"
+                      }`}>
+                        {isLatest ? <Plane size={12} className="text-white" /> : <div className="w-1 h-1 bg-slate-400 rounded-full" />}
                       </div>
-                      <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{new Date(update.timestamp).toLocaleString()}</span>
+                      {i !== flight.updates!.length - 1 && (
+                        <div className={`w-1 absolute top-6 bottom-0 left-1/2 -translate-x-1/2 z-10 ${
+                          isLatest ? "bg-gradient-to-b from-brand-secondary to-slate-100" : "bg-slate-100"
+                        }`} />
+                      )}
                     </div>
-                    {update.notes && (
-                      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 text-slate-600 leading-relaxed italic">
-                        "{update.notes}"
+                    
+                    <div className="flex-1 pb-12">
+                      <div className={`p-6 rounded-3xl border transition-all duration-300 ${
+                        isLatest ? "bg-white border-brand-secondary/20 shadow-xl shadow-brand-secondary/5" : "bg-slate-50/50 border-slate-100"
+                      }`}>
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
+                          <div className="space-y-1">
+                            <p className={`text-xl font-black ${isLatest ? "text-brand-primary" : "text-slate-500"}`}>
+                              {update.status}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <MapPin size={14} className={isLatest ? "text-brand-secondary" : "text-slate-400"} />
+                              <span className={`text-sm font-bold ${isLatest ? "text-slate-600" : "text-slate-400"}`}>
+                                {update.location || "En route"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
+                            <Calendar size={12} />
+                            {new Date(update.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                        
+                        {update.notes && (
+                          <div className={`p-4 rounded-2xl text-sm italic leading-relaxed ${
+                            isLatest ? "bg-brand-secondary/5 text-brand-primary border border-brand-secondary/10" : "bg-white text-slate-500 border border-slate-100"
+                          }`}>
+                            "{update.notes}"
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {(!flight.updates || flight.updates.length === 0) && (
-                <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400 font-bold">No updates available yet.</p>
+                <div className="text-center py-20 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
+                    <AlertCircle size={32} className="text-slate-200" />
+                  </div>
+                  <p className="text-slate-400 font-bold">No tracking history available for this flight.</p>
                 </div>
               )}
             </div>

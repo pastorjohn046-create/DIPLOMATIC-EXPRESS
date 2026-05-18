@@ -14,7 +14,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [flights, setFlights] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
-  const [activeAdminTab, setActiveAdminTab] = useState<"shipments" | "cs" | "flights">("shipments");
+  const [activeAdminTab, setActiveAdminTab] = useState<"shipments" | "cs" | "flights" | "receipts">("shipments");
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingFlight, setIsAddingFlight] = useState(false);
   const [newFlight, setNewFlight] = useState({
@@ -89,6 +89,14 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
   const [photo, setPhoto] = useState<File | null>(null);
   const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", details: "" });
   const [copied, setCopied] = useState(false);
+
+  const calculateDaysOld = (dateStr: string) => {
+    const created = new Date(dateStr);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
   const fetchHealth = async () => {
     try {
@@ -604,6 +612,21 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         </div>
       </header>
 
+      <div className="bg-brand-primary/5 border border-brand-primary/10 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary shrink-0">
+            <History size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-brand-primary">30-Day Activity & Data Retention Policy Active</p>
+            <p className="text-[10px] text-slate-500 font-medium">System automatically cleans up activity logs, shipments, and flights older than 30 days every 30 days.</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 bg-white border border-brand-primary/20 rounded-lg">
+          <span className="text-[10px] font-black text-brand-primary uppercase tracking-widest">Storage Status: Optimized</span>
+        </div>
+      </div>
+
       <div className="flex border-b border-slate-100 mb-8">
         <button 
           onClick={() => setActiveAdminTab("shipments")}
@@ -626,6 +649,13 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
         >
           Flights
           {activeAdminTab === "flights" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveAdminTab("receipts")}
+          className={`px-8 py-4 font-black uppercase tracking-widest text-sm transition-all relative flex items-center gap-2 ${activeAdminTab === "receipts" ? "text-brand-secondary" : "text-slate-400 hover:text-brand-primary"}`}
+        >
+          Receipts
+          {activeAdminTab === "receipts" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 w-full h-1 bg-brand-secondary rounded-full" />}
         </button>
       </div>
 
@@ -654,85 +684,102 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                       <th className="pb-4 font-bold">Destination</th>
                       <th className="pb-4 font-bold">Status</th>
                       <th className="pb-4 font-bold">Claimed By</th>
+                      <th className="pb-4 font-bold text-center">Age (Days)</th>
                       <th className="pb-4 font-bold text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {shipments.map((s) => (
-                      <tr key={s.id} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="py-5 font-mono font-black text-brand-secondary">{s.id}</td>
-                        <td className="py-5 font-medium">{s.customer_name}</td>
-                        <td className="py-5 text-slate-500">{s.destination}</td>
-                        <td className="py-5">
-                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                            s.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"
-                          }`}>
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="py-5">
-                          {s.claimed_by ? (
-                            <span className="text-xs font-bold text-brand-secondary">@{s.claimed_by}</span>
-                          ) : (
-                            <span className="text-xs text-slate-300 italic">Unclaimed</span>
-                          )}
-                        </td>
-                        <td className="py-5 text-right">
-                          <div className="flex justify-end gap-3">
-                            <button 
-                              onClick={() => openReceiptGenWithShipment(s)}
-                              className="text-brand-secondary font-bold text-sm hover:underline"
-                            >
-                              Receipt
-                            </button>
-                            <button 
-                              onClick={() => {
-                                fetchViewingShipment(s.id);
-                                setIsViewingShipment(true);
-                              }}
-                              className="text-slate-400 font-bold text-sm hover:text-brand-secondary"
-                            >
-                              View
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setSelectedShipment(s);
-                                setEditShipmentData({
-                                  customer_name: s.customer_name,
-                                  client_phone: s.client_phone || "",
-                                  origin: s.origin,
-                                  destination: s.destination
-                                });
-                                setIsEditingShipment(true);
-                              }}
-                              className="text-slate-400 font-bold text-sm hover:text-brand-primary"
-                            >
-                              Edit
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setSelectedShipment(s);
-                                setUpdateData({
-                                  status: s.status,
-                                  location: "",
-                                  notes: "",
-                                  paymentMethods: s.payment_methods ? JSON.parse(s.payment_methods) : []
-                                });
-                              }}
-                              className="text-brand-secondary font-bold text-sm hover:underline"
-                            >
-                              Update Status
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteShipment(s.id)}
-                              className="text-red-400 font-bold text-sm hover:text-red-600"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {shipments.map((s) => {
+                      const age = calculateDaysOld(s.created_at);
+                      const isOld = age >= 30;
+                      return (
+                        <tr key={s.id} className="group hover:bg-slate-50/50 transition-colors">
+                          <td className="py-5 font-mono font-black text-brand-secondary">{s.id}</td>
+                          <td className="py-5 font-medium">{s.customer_name}</td>
+                          <td className="py-5 text-slate-500">{s.destination}</td>
+                          <td className="py-5">
+                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                              s.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"
+                            }`}>
+                              {s.status}
+                            </span>
+                          </td>
+                          <td className="py-5">
+                            {s.claimed_by ? (
+                              <span className="text-xs font-bold text-brand-secondary">@{s.claimed_by}</span>
+                            ) : (
+                              <span className="text-xs text-slate-300 italic">Unclaimed</span>
+                            )}
+                          </td>
+                          <td className="py-5 text-center">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              isOld ? "bg-amber-100 text-amber-700" : "text-slate-400"
+                            }`}>
+                              {age}d
+                            </span>
+                            {isOld && (
+                              <div className="inline-block ml-1" title="Shipment has exceeded 30 days">
+                                <AlertCircle size={10} className="text-amber-500 animate-pulse" />
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-5 text-right">
+                            <div className="flex justify-end gap-3">
+                              <button 
+                                onClick={() => openReceiptGenWithShipment(s)}
+                                className="text-brand-secondary font-bold text-sm hover:underline"
+                              >
+                                Receipt
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  fetchViewingShipment(s.id);
+                                  setIsViewingShipment(true);
+                                }}
+                                className="text-slate-400 font-bold text-sm hover:text-brand-secondary"
+                              >
+                                View
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedShipment(s);
+                                  setEditShipmentData({
+                                    customer_name: s.customer_name,
+                                    client_phone: s.client_phone || "",
+                                    origin: s.origin,
+                                    destination: s.destination
+                                  });
+                                  setIsEditingShipment(true);
+                                }}
+                                className="text-slate-400 font-bold text-sm hover:text-brand-primary"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedShipment(s);
+                                  setUpdateData({
+                                    status: s.status,
+                                    location: "",
+                                    notes: "",
+                                    paymentMethods: s.payment_methods ? JSON.parse(s.payment_methods) : []
+                                  });
+                                }}
+                                className="text-brand-secondary font-bold text-sm hover:underline"
+                              >
+                                Update Status
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteShipment(s.id)}
+                                className="text-red-400 font-bold text-sm hover:text-red-600"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -871,6 +918,70 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeAdminTab === "receipts" && (
+          <div className="space-y-8">
+            <div className="card">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <FileText size={24} className="text-brand-secondary" />
+                  Receipt Management
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center space-y-4 group hover:border-brand-secondary/30 transition-all">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-secondary/10 flex items-center justify-center text-brand-secondary">
+                    <Package size={32} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Consignment Receipt</h4>
+                    <p className="text-sm text-slate-500">Generate a professional receipt for package shipments and logistics.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setReceiptData({ ...receiptData, type: "package" });
+                      setShowReceiptGen(true);
+                    }}
+                    className="btn-primary w-full py-3"
+                  >
+                    Quick Generate
+                  </button>
+                </div>
+
+                <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center space-y-4 group hover:border-brand-primary/30 transition-all">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                    <Plane size={32} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Flight Booking Receipt</h4>
+                    <p className="text-sm text-slate-500">Generate a professional receipt for flight bookings and travel services.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setReceiptData({ ...receiptData, type: "flight" });
+                      setShowReceiptGen(true);
+                    }}
+                    className="btn-primary w-full py-3 bg-brand-primary hover:bg-brand-primary/90"
+                  >
+                    Quick Generate
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-12 p-6 bg-brand-primary/5 rounded-2xl border border-brand-primary/10">
+                <div className="flex items-center gap-2 text-brand-primary font-bold mb-2">
+                  <AlertCircle size={16} />
+                  <span>Administrative Note</span>
+                </div>
+                <p className="text-sm text-slate-600">
+                  Receipts generated through this module are automatically formatted with the company branding and security watermarks. 
+                  Always ensure the Tracking ID matches the one in the database for consistency.
+                </p>
               </div>
             </div>
           </div>
@@ -1430,7 +1541,7 @@ export const AdminDashboard = ({ user, onLogout }: AdminDashboardProps) => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-brand-primary tracking-tight">Admin Activity Logs</h3>
+                <h3 className="text-2xl font-black text-brand-primary tracking-tight">System Activity Logs</h3>
                 <button onClick={() => setShowLogs(false)} className="text-slate-400 hover:text-brand-primary"><X size={28} /></button>
               </div>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
